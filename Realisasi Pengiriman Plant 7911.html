@@ -166,6 +166,15 @@ header.top{position:relative}
 .del-list label{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
 .cfm-b{display:flex;gap:8px}
 .fld[hidden]{display:none}
+.cvgrid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))}
+.cvh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cvh h3{font:700 20px var(--f-display);margin:0}
+.cvk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 14px}
+.cvk>div{display:flex;flex-direction:column;gap:2px;border-left:2px solid var(--line);padding-left:10px;min-width:0}
+.cvk .l{font:500 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.cvk .v{font:700 22px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.cvt{font:600 13px var(--f-body);margin:0 0 4px}
+@media (max-width:480px){.cvk{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 
 <div class="wrap">
@@ -181,7 +190,7 @@ header.top{position:relative}
   </nav><button class="btn" id="theme" type="button" aria-pressed="false"></button></div>
 </header>
 
-<div class="views" role="tablist" aria-label="Tampilan"><button type="button" role="tab" data-v="main" aria-selected="true">Dashboard utama</button><button type="button" role="tab" data-v="remblo" aria-selected="false">Remblo · Rembang, Blora, Cepu</button><button type="button" role="tab" data-v="status" aria-selected="false">Status (45-60)</button></div>
+<div class="views" role="tablist" aria-label="Tampilan"><button type="button" role="tab" data-v="main" aria-selected="true">Dashboard utama</button><button type="button" role="tab" data-v="remblo" aria-selected="false">Remblo · Rembang, Blora, Cepu</button><button type="button" role="tab" data-v="status" aria-selected="false">Status (45-60)</button><button type="button" role="tab" data-v="conv" aria-selected="false">Display Conveyor</button></div>
 <div class="card imp" id="dropzone" style="margin-top:12px">
   <div class="imp-t"><h3>Tambah data</h3><p class="sub">Impor file Excel (.xls atau .xlsx) berformat sama dengan file realisasi, lalu tarik ke sini atau pilih file. SPJ yang sudah ada dilewati. Data impor hanya tersimpan di browser ini.</p></div>
   <div class="imp-b"><input type="file" id="file" accept=".xls,.xlsx" hidden><button class="btn" id="pick" type="button">Pilih file Excel</button><button class="btn btn-danger" id="clrall" type="button">Hapus data</button></div>
@@ -195,6 +204,7 @@ header.top{position:relative}
   <div class="fld"><label for="f-exp">Ekspeditur</label><select id="f-exp"></select></div>
   <div class="fld"><label for="f-semen">Semen</label><select id="f-semen"></select></div>
   <div class="fld" id="fld-paket"><label for="f-paket">Paket</label><select id="f-paket"></select></div>
+  <div class="fld" id="fld-cvstatus" hidden><label for="f-cvstatus">Status</label><select id="f-cvstatus"></select></div>
   <div class="fld"><label for="f-prov">Provinsi</label><select id="f-prov"></select></div>
   <div class="fld"><label for="f-conv">Conveyor</label><select id="f-conv"></select></div>
   <div class="count"><span id="cnt"></span><button class="btn" id="reset" type="button">Atur ulang</button></div>
@@ -307,6 +317,15 @@ header.top{position:relative}
   <div class="dtab" id="rb-rows" style="margin-top:8px"></div>
 </section>
 </div>
+</div>
+<div id="view-conv" hidden>
+<section id="s-conv">
+  <h2>Display Conveyor</h2>
+  <p class="lede">Realisasi tiap conveyor beserta rilis per produk. Mengikuti filter di atas, jadi tanggal, shift, atau paket bisa dipilih lebih dulu.</p>
+  <p class="note" id="cv-note" style="margin:0 0 10px"></p>
+  <div class="card"><h3>Ringkasan per conveyor</h3><p class="sub">Truk, zak, tonase, dan waktu layanan. Kolom Dalam proses diambil dari tab Status (45-60).</p><div class="tw" id="cv-sum"></div></div>
+  <div class="cvgrid" id="cv-grid" style="margin-top:12px"></div>
+</section>
 </div>
 <div id="view-status" hidden>
 <section id="s-status">
@@ -520,6 +539,7 @@ function render(){
   renderMap();
   renderRemblo();
   renderStatus();
+  renderConv();
 }
 
 /* raw table */
@@ -651,7 +671,7 @@ function renderRemblo(){
 }
 let view='main';
 function setView(v){
-  view=v;$('#view-main').hidden=v!=='main';$('#view-remblo').hidden=v!=='remblo';$('#view-status').hidden=v!=='status';$('#filters').hidden=v==='status';$('#fld-paket').hidden=v==='remblo';if(v==='remblo'&&st.paket){st.paket='';$('#f-paket').value='';render()}
+  view=v;$('#view-main').hidden=v!=='main';$('#view-remblo').hidden=v!=='remblo';$('#view-status').hidden=v!=='status';$('#view-conv').hidden=v!=='conv';$('#filters').hidden=v==='status';$('#fld-paket').hidden=v==='remblo'||v==='conv';$('#fld-cvstatus').hidden=v!=='conv';if((v==='remblo'||v==='conv')&&st.paket){st.paket='';$('#f-paket').value='';render()}
   document.querySelectorAll('.views button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v?'true':'false'));
   $('#nav').hidden=v!=='main';
   if(v==='main')renderMap();
@@ -772,6 +792,50 @@ function handleFile(file){
 $('#pick').addEventListener('click',()=>$('#file').click());
 $('#file').addEventListener('change',e=>{handleFile(e.target.files[0]);e.target.value=''});
 function resetFilters(){Object.keys(fmap).forEach(id=>{st[fmap[id]]=''})}
+/* ===== Display Conveyor ===== */
+let cvs='';
+function cvStatusName(s){
+  if(s==='70')return 'Status 70 · sudah keluar';
+  const a=SROWS.filter(r=>r.st===s),inn=a.filter(r=>r.i).length;
+  return 'Status '+s+' · '+(inn===a.length?'di dalam plant':inn===0?'antri, belum masuk':'campuran');
+}
+function renderConv(){
+  const stv=[...new Set(SROWS.map(r=>r.st))].sort();
+  fillSel('#f-cvstatus','Semua status',['70',...stv.filter(s=>s!=='70')],cvStatusName,cvs);
+  cvs=$('#f-cvstatus').value;
+  const proc=cvs!==''&&cvs!=='70';
+  let src;
+  if(proc){
+    const snap=ms2(SSNAP);
+    src=SROWS.filter(r=>r.st===cvs&&(!st.unit||r.unit===st.unit)&&(!st.exp||r.exp===st.exp)&&(!st.semen||semenOf(r)===st.semen)&&(!st.conv||r.conv===st.conv))
+      .map(r=>({conv:r.conv,prod:r.prod,unit:r.unit,net:r.ton,qty:r.qty,f:1,wait:0,dwell:Math.max(0,(snap-ms2(r.i||r.q))/6e4)}));
+  }else src=F;
+  $('#cv-note').textContent=proc?'Status '+cvs+' berasal dari tab Status (45-60), posisi per '+fmtD(SSNAP.slice(0,10))+' pukul '+SSNAP.slice(11)+'. Filter tanggal, shift, dan provinsi tidak berlaku, karena data ini belum punya tanggal keluar. Kolom "Median lama" dihitung sejak masuk plant (atau sejak antri bila belum masuk).':'';
+  const showIp=cvs==='';
+  const allR=[...D,...SROWS],convs=st.conv?[st.conv]:[...new Set(allR.map(r=>r.conv))].sort();
+  const kindOf=c=>{const u=new Set(allR.filter(r=>r.conv===c).map(r=>r.unit));return u.has('Curah')&&u.has('Zak')?'Zak + curah':u.has('Curah')?'Curah':'Zak'};
+  const T=sum(src,r=>r.net)||1;
+  const inproc=c=>{const a=SROWS.filter(r=>r.conv===c&&(!st.unit||r.unit===st.unit));return {out:a.filter(r=>!r.i).length,inn:a.filter(r=>r.i).length,t:sum(a,r=>r.ton)}};
+  const rowsC=convs.map(c=>{const a=src.filter(r=>r.conv===c),f=a.filter(r=>r.f);return {c,a,n:tr(a),zak:sum(a.filter(r=>r.unit==='Zak'),r=>r.qty),t:sum(a,r=>r.net),w:q(f.map(r=>r.wait),.5),d:q(f.map(r=>r.dwell),.5),d9:q(f.map(r=>r.dwell),.9),dmax:Math.max(0,...f.map(r=>r.dwell)),ip:inproc(c),kind:kindOf(c)}});
+  const heads=proc?[{t:'Conveyor'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median lama',r:1},{t:'Terlama',r:1}]
+    :[{t:'Conveyor'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median tunggu',r:1},{t:'Median proses',r:1},{t:'P90 proses',r:1}].concat(showIp?[{t:'Dalam proses',r:1}]:[]);
+  table($('#cv-sum'),heads,rowsC.map(x=>{const b=[esc(convLabel(x.c)),nf(x.n),x.zak?nf(x.zak):'–',nf(x.t,1),nf(x.t/T*100,1)+'%'];
+    return proc?b.concat([dur(x.d),x.n?dur(x.dmax):'–']):b.concat([dur(x.w),dur(x.d),dur(x.d9)],showIp?[(x.ip.out+x.ip.inn)?nf(x.ip.out)+' antri · '+nf(x.ip.inn)+' di plant':'–']:[])}));
+  $('#cv-grid').innerHTML=rowsC.map(x=>'<div class="card cvc"><div class="cvh"><h3>Conveyor '+esc(convLabel(x.c))+'</h3><span class="pill b-info">'+x.kind+'</span>'+(x.n?'':'<span class="pill b-warn">Belum ada truk</span>')+'</div>'+
+    '<div class="cvk"><div><span class="l">Truk</span><span class="v">'+nf(x.n)+'</span></div><div><span class="l">'+(x.kind==='Curah'?'Ton':'Zak')+'</span><span class="v">'+(x.kind==='Curah'?nf(x.t,1):nf(x.zak))+'</span></div><div><span class="l">Ton</span><span class="v">'+nf(x.t,1)+'</span></div><div><span class="l">'+(proc?'Median lama':'Median proses')+'</span><span class="v">'+dur(x.d)+'</span></div></div>'+
+    '<h4 class="cvt">Rilis per produk</h4><div class="tw" id="cvt-'+esc(x.c)+'"></div>'+
+    ((showIp&&(x.ip.out+x.ip.inn))?'<p class="note">Dalam proses (tab Status 45-60): '+nf(x.ip.out)+' antri, '+nf(x.ip.inn)+' di dalam plant, '+nf(x.ip.t,1)+' ton.</p>':'')+'</div>').join('');
+  rowsC.forEach(x=>{
+    const prods=[...group(x.a,r=>r.prod)].map(([k,a])=>({k,n:tr(a),zak:sum(a.filter(r=>r.unit==='Zak'),r=>r.qty),t:sum(a,r=>r.net)})).sort((a,b)=>b.t-a.t);
+    if(!prods.length){$('#cvt-'+x.c).innerHTML='<div class="empty">Belum ada rilis produk</div>';return}
+    const tot=sum(prods,p=>p.t)||1;
+    const rows=prods.map(p=>[esc(p.k),nf(p.n),p.zak?nf(p.zak):'–',nf(p.t,1),nf(p.t/tot*100,1)+'% <span class="mini" style="width:'+Math.round(p.t/tot*56)+'px"></span>']);
+    rows.push(['<b>Total</b>','<b>'+nf(sum(prods,p=>p.n))+'</b>','<b>'+(x.zak?nf(x.zak):'–')+'</b>','<b>'+nf(tot,1)+'</b>','']);
+    table($('#cvt-'+x.c),[{t:'Produk'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi'}],rows);
+  });
+}
+$('#f-cvstatus').addEventListener('change',()=>{cvs=$('#f-cvstatus').value;renderConv()});
+
 /* ===== tab Status (45-60) ===== */
 const sf={st:'',unit:'',conv:'',paket:'',semen:''};
 const ms2=iso=>Date.parse(iso+':00Z');
