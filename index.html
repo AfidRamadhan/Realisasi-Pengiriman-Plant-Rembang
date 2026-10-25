@@ -289,7 +289,7 @@ header.top{position:relative}
 <div id="view-remblo" hidden>
 <section id="s-remblo">
   <h2>Remblo</h2>
-  <p class="lede">Tampilan khusus tujuan Rembang, Blora, dan Cepu. Mengikuti filter di atas. <span id="rb-count"></span>.</p>
+  <p class="lede">Tampilan khusus tujuan Rembang, Blora, dan Cepu, hanya kemasan zak (curah tidak diikutkan). Mengikuti filter di atas. <span id="rb-count"></span>.</p>
   <div class="grid kpis" id="rb-kpis"></div>
   <div class="grid cols-2" style="margin-top:12px">
     <div class="card"><h3>Perbandingan wilayah</h3><p class="sub">Truk, tonase, dan waktu layanan per wilayah.</p><div class="tw" id="rb-tbl"></div></div>
@@ -315,6 +315,7 @@ header.top{position:relative}
   <div class="row selrow">
     <div class="fld"><label for="ss-st">Status</label><select id="ss-st"></select></div>
     <div class="fld"><label for="ss-unit">Kemasan</label><select id="ss-unit"></select></div>
+    <div class="fld"><label for="ss-semen">Semen</label><select id="ss-semen"></select></div>
     <div class="fld"><label for="ss-paket">Paket</label><select id="ss-paket"></select></div>
     <div class="fld"><label for="ss-conv">Conveyor</label><select id="ss-conv"></select></div>
   </div>
@@ -620,19 +621,19 @@ if(typeof ResizeObserver!=='undefined'){new ResizeObserver(()=>{const w=$('#maps
 /* ===== Remblo (Rembang, Blora, Cepu) ===== */
 const RB=['Rembang','Blora','Cepu'],RBC={Rembang:'var(--s1)',Blora:'var(--s2)',Cepu:'var(--s3)'};
 function renderRemblo(){
-  const R=F.filter(r=>RB.includes(r.kab)),RT=R.filter(r=>r.f),Tn=sum(R,r=>r.net),n=tr(R);
+  const R=F.filter(r=>RB.includes(r.kab)&&r.unit==='Zak'),RT=R.filter(r=>r.f),Tn=sum(R,r=>r.net),n=tr(R);
   $('#rb-count').textContent=nf(R.length)+' SPJ dari '+nf(F.length)+' SPJ pada filter aktif';
-  if(!R.length){['rb-kpis'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Tidak ada SPJ ke Rembang, Blora, atau Cepu pada filter ini.</div>');
+  if(!R.length){['rb-kpis'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Tidak ada SPJ zak ke Rembang, Blora, atau Cepu pada filter ini.</div>');
     ['rb-tbl','rb-prod','rb-dist','rb-exp','rb-kec','rb-ship','rb-rows'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Tidak ada data</div>');
     $('#rb-hour').innerHTML='';$('#rb-day-card').hidden=true;return}
-  const w=RT.map(r=>r.wait),dw=RT.map(r=>r.dwell),zk=sum(R.filter(r=>r.unit==='Zak'),r=>r.net),cr=sum(R.filter(r=>r.unit==='Curah'),r=>r.net);
+  const w=RT.map(r=>r.wait),dw=RT.map(r=>r.dwell);
   $('#rb-kpis').innerHTML=kpi('Truk keluar',nf(n),'trip',nf(R.length)+' SPJ/DO')+kpi('Total tonase',nf(Tn,1),'ton','rata-rata '+nf(Tn/n,1)+' ton per truk')+
-    kpi('Zak',nf(zk,1),'ton',nf(sum(R.filter(r=>r.unit==='Zak'),r=>r.qty))+' zak')+kpi('Curah',nf(cr,1),'ton','')+
+    kpi('Total zak',nf(sum(R,r=>r.qty)),'zak','kemasan zak saja')+
     kpi('Median tunggu',dur(q(w,.5)),'','90% truk di bawah '+dur(q(w,.9)))+kpi('Median proses',dur(q(dw,.5)),'','90% truk di bawah '+dur(q(dw,.9)));
   /* perbandingan */
   const gk=group(R,r=>r.kab);
-  table($('#rb-tbl'),[{t:'Wilayah'},{t:'Truk',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Zak (t)',r:1},{t:'Curah (t)',r:1},{t:'Median tunggu',r:1},{t:'Median proses',r:1}],
-    RB.map(k=>{const a=gk.get(k)||[];if(!a.length)return null;const t=sum(a,r=>r.net);return ['<i class="dot" style="background:'+RBC[k]+'"></i>'+k,nf(tr(a)),nf(t,1),nf(t/Tn*100,1)+'%',nf(sum(a.filter(r=>r.unit==='Zak'),r=>r.net),1),nf(sum(a.filter(r=>r.unit==='Curah'),r=>r.net),1),dur(q(a.filter(r=>r.f).map(r=>r.wait),.5)),dur(q(a.filter(r=>r.f).map(r=>r.dwell),.5))]}).filter(Boolean));
+  table($('#rb-tbl'),[{t:'Wilayah'},{t:'Truk',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median tunggu',r:1},{t:'Median proses',r:1}],
+    RB.map(k=>{const a=gk.get(k)||[];if(!a.length)return null;const t=sum(a,r=>r.net);return ['<i class="dot" style="background:'+RBC[k]+'"></i>'+k,nf(tr(a)),nf(t,1),nf(t/Tn*100,1)+'%',dur(q(a.filter(r=>r.f).map(r=>r.wait),.5)),dur(q(a.filter(r=>r.f).map(r=>r.dwell),.5))]}).filter(Boolean));
   /* jam */
   cols($('#rb-hour'),Array.from({length:24},(_,h)=>{const a=R.filter(r=>hr(r.o)===h),sg=RB.map(k=>({k,v:sum(a.filter(r=>r.kab===k),r=>r.net),c:RBC[k]}));
     return {label:String(h).padStart(2,'0'),tip:'<b>'+String(h).padStart(2,'0')+':00–'+String(h).padStart(2,'0')+':59</b><br>'+tr(a)+' truk · '+nf(sum(a,r=>r.net),1)+' ton'+sg.filter(s=>s.v>0).map(s=>'<br>'+s.k+' '+nf(s.v,1)),segs:sg}}),{every:3,axis:'jam keluar (WIB) · ton'});
@@ -772,7 +773,7 @@ $('#pick').addEventListener('click',()=>$('#file').click());
 $('#file').addEventListener('change',e=>{handleFile(e.target.files[0]);e.target.value=''});
 function resetFilters(){Object.keys(fmap).forEach(id=>{st[fmap[id]]=''})}
 /* ===== tab Status (45-60) ===== */
-const sf={st:'',unit:'',conv:'',paket:''};
+const sf={st:'',unit:'',conv:'',paket:'',semen:''};
 const ms2=iso=>Date.parse(iso+':00Z');
 const STC=['var(--s1)','var(--s2)','var(--s3)','var(--ink-3)'];
 function normKeys(json){const norm=k=>String(k).replace(/\s+/g,' ').trim().toUpperCase();return json.map(o=>{const x={};for(const k in o)x[norm(k)]=o[k];return x})}
@@ -804,7 +805,7 @@ function importStatus(json,file){
   if(!r.rows.length){say('Tidak ada baris status yang valid di file ini.','err');return}
   SROWS=r.rows;SSNAP=r.snap||SSNAP;SSRC=file.name;
   try{localStorage.setItem(ST_KEY,JSON.stringify({rows:SROWS,snap:SSNAP,src:SSRC}));localStorage.removeItem(STR_KEY)}catch(e){}
-  sf.st=sf.unit=sf.conv=sf.paket='';syncBtns();renderStatus();setView('status');
+  sf.st=sf.unit=sf.conv=sf.paket=sf.semen='';syncBtns();renderStatus();setView('status');
   say(nf(r.rows.length)+' baris dari '+file.name+' masuk ke tab Status (45-60). Isi tab sebelumnya diganti. Data realisasi tidak berubah.'+(r.bad?' '+nf(r.bad)+' baris tidak valid dilewati.':''),'ok');
 }
 function renderStatus(){
@@ -812,14 +813,15 @@ function renderStatus(){
   const stv=[...new Set(A.map(r=>r.st))].sort();
   fillSel('#ss-st','Semua status',stv,v=>'Status '+v,sf.st);
   fillSel('#ss-unit','Semua kemasan',[...new Set(A.map(r=>r.unit))].sort(),null,sf.unit);
+  fillSel('#ss-semen','Semua semen',['Proyek','Non Proyek'],null,sf.semen);
   fillSel('#ss-paket','Semua paket',paketVals(A),null,sf.paket);
   fillSel('#ss-conv','Semua conveyor',[...new Set(A.map(r=>r.conv))].sort(),convLabel,sf.conv);
-  sf.st=$('#ss-st').value;sf.unit=$('#ss-unit').value;sf.conv=$('#ss-conv').value;sf.paket=$('#ss-paket').value;
+  sf.st=$('#ss-st').value;sf.unit=$('#ss-unit').value;sf.conv=$('#ss-conv').value;sf.paket=$('#ss-paket').value;sf.semen=$('#ss-semen').value;
   const nameOf=s=>{const a=A.filter(r=>r.st===s);const inn=a.filter(r=>r.i).length;return 'Status '+s+' · '+(inn===a.length?'di dalam plant':inn===0?'antri, belum masuk':'campuran')};
   if(!A.length){['ss-kpis'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Belum ada data status. Impor file Excel yang berisi truk belum keluar (tanpa tanggal keluar) untuk mengisi tab ini.</div>');
     ['ss-status','ss-kab','ss-prod','ss-dist','ss-exp','ss-rows'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Tidak ada data</div>');$('#ss-conv-chart').innerHTML='';$('#ss-legend').innerHTML='';$('#ss-lede').textContent='';return}
   const snap=ms2(SSNAP);
-  const R=A.filter(r=>(!sf.st||r.st===sf.st)&&(!sf.unit||r.unit===sf.unit)&&(!sf.conv||r.conv===sf.conv)&&(!sf.paket||pk(r.kab)===sf.paket)).map(r=>({...r,wq:Math.max(0,(snap-ms2(r.q))/6e4),wi:r.i?Math.max(0,(snap-ms2(r.i))/6e4):null,lama:Math.max(0,(snap-ms2(r.i||r.q))/6e4)}));
+  const R=A.filter(r=>(!sf.st||r.st===sf.st)&&(!sf.unit||r.unit===sf.unit)&&(!sf.conv||r.conv===sf.conv)&&(!sf.paket||pk(r.kab)===sf.paket)&&(!sf.semen||semenOf(r)===sf.semen)).map(r=>({...r,wq:Math.max(0,(snap-ms2(r.q))/6e4),wi:r.i?Math.max(0,(snap-ms2(r.i))/6e4):null,lama:Math.max(0,(snap-ms2(r.i||r.q))/6e4)}));
   $('#ss-lede').textContent='Truk yang sudah antri atau masuk plant tetapi belum keluar. Posisi per '+fmtD(SSNAP.slice(0,10))+' pukul '+SSNAP.slice(11)+' (sumber: '+SSRC+'). Lama dihitung sampai waktu tersebut. '+nf(R.length)+' dari '+nf(A.length)+' baris tampil.';
   if(!R.length){$('#ss-kpis').innerHTML='<div class="empty">Tidak ada baris untuk kombinasi filter ini.</div>';['ss-status','ss-kab','ss-prod','ss-dist','ss-exp','ss-rows'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Tidak ada data</div>');$('#ss-conv-chart').innerHTML='';$('#ss-legend').innerHTML='';return}
   const T=sum(R,r=>r.ton),out=R.filter(r=>!r.i),inn=R.filter(r=>r.i),old=[...out].sort((a,b)=>b.wq-a.wq)[0];
@@ -837,9 +839,9 @@ function renderStatus(){
   hbars($('#ss-dist'),bar(r=>r.dist,'t'),{fmt:v=>nf(v,1)+' t'});
   hbars($('#ss-exp'),bar(r=>r.exp,'n'),{fmt:v=>nf(v)+' SPJ'});
   table($('#ss-rows'),[{t:'Status'},{t:'Posisi'},{t:'Plat'},{t:'Tipe'},{t:'Produk'},{t:'Ton',r:1},{t:'Tujuan'},{t:'Distributor'},{t:'Ekspeditur'},{t:'Conv'},{t:'Antri',m:1},{t:'Masuk',m:1},{t:'Lama',r:1}],
-    [...R].sort((a,b)=>a.st<b.st?-1:a.st>b.st?1:b.lama-a.lama).map(r=>['<i class="dot" style="background:'+col[r.st]+'"></i>'+esc(r.st),r.i?'Di plant':'Antri','<span class="mono">'+esc(r.pl)+'</span>',esc(r.tt),esc(r.prod),nf(r.ton,1),esc(r.kab)+(RB.includes(r.kab)?' <span class="pill b-info">Remblo</span>':''),esc(r.dist),esc(r.exp),r.conv,dm(r.q)+' '+hm(r.q),r.i?dm(r.i)+' '+hm(r.i):'–','<span class="pill '+(r.lama>=240?'b-warn':'b-info')+'">'+dur(r.lama)+'</span>']));
+    [...R].sort((a,b)=>a.st<b.st?-1:a.st>b.st?1:b.lama-a.lama).map(r=>['<i class="dot" style="background:'+col[r.st]+'"></i>'+esc(r.st),r.i?'Di plant':'Antri','<span class="mono">'+esc(r.pl)+'</span>',esc(r.tt),esc(r.prod),nf(r.ton,1),esc(r.kab)+(RB.includes(r.kab)&&r.unit==='Zak'?' <span class="pill b-info">Remblo</span>':''),esc(r.dist),esc(r.exp),r.conv,dm(r.q)+' '+hm(r.q),r.i?dm(r.i)+' '+hm(r.i):'–','<span class="pill '+(r.lama>=240?'b-warn':'b-info')+'">'+dur(r.lama)+'</span>']));
 }
-['ss-st','ss-unit','ss-conv','ss-paket'].forEach(id=>$('#'+id).addEventListener('change',()=>{sf.st=$('#ss-st').value;sf.unit=$('#ss-unit').value;sf.conv=$('#ss-conv').value;sf.paket=$('#ss-paket').value;renderStatus()}));
+['ss-st','ss-unit','ss-conv','ss-paket','ss-semen'].forEach(id=>$('#'+id).addEventListener('change',()=>{sf.st=$('#ss-st').value;sf.unit=$('#ss-unit').value;sf.conv=$('#ss-conv').value;sf.paket=$('#ss-paket').value;sf.semen=$('#ss-semen').value;renderStatus()}));
 /* ===== hapus data per tanggal ===== */
 function openDelete(){
   const dates=[...new Set(D.map(r=>r.date))].sort();
