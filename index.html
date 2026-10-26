@@ -175,6 +175,165 @@ header.top{position:relative}
 .cvk .v{font:700 22px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
 .cvt{font:600 13px var(--f-body);margin:0 0 4px}
 @media (max-width:480px){.cvk{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ===== Glass layer: tampilan kaca + transisi halus (override di atas gaya dasar) ===== */
+:root{
+  --glass:rgba(255,255,255,.58); --glass-strong:rgba(255,255,255,.78); --glass-soft:rgba(255,255,255,.34);
+  --glass-line:rgba(255,255,255,.75); --glass-edge:rgba(15,40,80,.08);
+  --glass-shadow:0 10px 30px -8px rgba(30,55,100,.16),0 2px 6px rgba(30,55,100,.05);
+  --glass-hi:inset 0 1px 0 rgba(255,255,255,.85);
+  --blur:blur(20px) saturate(165%);
+  --ease:cubic-bezier(.22,.8,.3,1);
+  --r-lg:18px; --r-md:12px;
+  --mesh-a:rgba(42,120,214,.30); --mesh-b:rgba(27,175,122,.22); --mesh-c:rgba(235,104,52,.14); --mesh-base:#e9eef5;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --glass:rgba(32,37,43,.52); --glass-strong:rgba(48,55,64,.68); --glass-soft:rgba(255,255,255,.05);
+  --glass-line:rgba(255,255,255,.12); --glass-edge:rgba(0,0,0,.35);
+  --glass-shadow:0 14px 36px -10px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.25);
+  --glass-hi:inset 0 1px 0 rgba(255,255,255,.08);
+  --mesh-a:rgba(57,135,229,.26); --mesh-b:rgba(25,158,112,.18); --mesh-c:rgba(217,89,38,.12); --mesh-base:#0c0f13}}
+:root[data-theme="dark"]{
+  --glass:rgba(32,37,43,.52); --glass-strong:rgba(48,55,64,.68); --glass-soft:rgba(255,255,255,.05);
+  --glass-line:rgba(255,255,255,.12); --glass-edge:rgba(0,0,0,.35);
+  --glass-shadow:0 14px 36px -10px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.25);
+  --glass-hi:inset 0 1px 0 rgba(255,255,255,.08);
+  --mesh-a:rgba(57,135,229,.26); --mesh-b:rgba(25,158,112,.18); --mesh-c:rgba(217,89,38,.12); --mesh-base:#0c0f13}
+
+html{background:var(--mesh-base)}
+body{background:transparent}
+html::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(52vmax 42vmax at 8% 4%,var(--mesh-a),transparent 62%),
+    radial-gradient(46vmax 40vmax at 96% 18%,var(--mesh-b),transparent 60%),
+    radial-gradient(50vmax 44vmax at 70% 104%,var(--mesh-a),transparent 62%),
+    radial-gradient(34vmax 30vmax at 10% 92%,var(--mesh-c),transparent 62%),
+    var(--mesh-base)}
+body::before{background:color-mix(in srgb,var(--mesh-base) 55%,transparent);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+
+/* permukaan kaca */
+.card,.dtab,.mapbox,.filters,.views,.seg,nav.sec button,.btn,select,input[type=search]{
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.card{background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-lg);
+  box-shadow:var(--glass-hi),var(--glass-shadow);padding:16px 18px}
+.card.imp{border-style:dashed;border-color:color-mix(in srgb,var(--ink) 22%,transparent)}
+.card.imp.over{background:color-mix(in srgb,var(--accent) 16%,var(--glass));border-color:var(--accent)}
+
+/* filter bar mengambang */
+.filters{top:calc(env(safe-area-inset-top,0px) + 8px);margin-top:12px;padding:10px 14px;
+  background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-lg);
+  box-shadow:var(--glass-hi),var(--glass-shadow)}
+section{scroll-margin-top:110px}
+
+/* kontrol */
+select,input[type=search]{background:var(--glass-strong);border:1px solid var(--glass-line);
+  border-radius:10px;box-shadow:var(--glass-hi);padding:7px 10px}
+.btn,nav.sec button{background:var(--glass-strong);border:1px solid var(--glass-line);
+  border-radius:999px;padding:7px 14px;box-shadow:var(--glass-hi)}
+nav.sec button{background:var(--glass-soft);color:var(--ink-2)}
+.btn:hover,nav.sec button:hover{background:var(--glass-strong);color:var(--ink)}
+.btn:active,nav.sec button:active{transform:scale(.97)}
+.btn-danger{border-color:color-mix(in srgb,var(--crit) 40%,var(--glass-line))}
+.seg{border:1px solid var(--glass-line);border-radius:999px;background:var(--glass-soft);padding:3px;gap:2px;overflow:visible}
+.seg button{background:transparent;border-radius:999px;padding:5px 12px}
+.seg button+button{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-s1);box-shadow:0 3px 10px -2px color-mix(in srgb,var(--accent) 55%,transparent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+
+/* tab tampilan jadi pil kaca */
+.views{display:flex;width:fit-content;max-width:100%;gap:4px;padding:4px;margin-top:6px;
+  background:var(--glass);border:1px solid var(--glass-line);border-bottom:1px solid var(--glass-line);
+  border-radius:999px;box-shadow:var(--glass-hi),var(--glass-shadow)}
+.views button{border-radius:999px;border-bottom:0;margin-bottom:0;padding:8px 16px}
+.views button:hover{background:var(--glass-soft)}
+.views button[aria-selected="true"]{background:var(--glass-strong);border-bottom-color:transparent;
+  box-shadow:var(--glass-hi),0 3px 10px -3px rgba(20,40,80,.25)}
+
+/* tabel */
+.dtab{background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-lg);box-shadow:var(--glass-hi),var(--glass-shadow)}
+th{background:color-mix(in srgb,var(--glass-strong) 88%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+td,th{border-bottom-color:color-mix(in srgb,var(--ink) 8%,transparent)}
+tbody tr:hover td{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+tbody tr:last-child td{border-bottom:0}
+
+/* grafik */
+.hr .t{height:10px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.hr .t b{border-radius:999px}
+.stack{height:14px;gap:3px}.stack b{border-radius:999px}
+.plot .g{border-top-color:color-mix(in srgb,var(--ink) 10%,transparent)}
+.plot .c b{border-radius:6px 6px 0 0}
+.plot .c:hover{background:color-mix(in srgb,var(--ink) 5%,transparent);border-radius:8px}
+.mini{border-radius:999px}
+.pill,.badge{border-radius:999px}
+.mapbox{border:1px solid var(--glass-line);border-radius:var(--r-md);background:var(--glass-soft)}
+.mp-sea-bg{fill:color-mix(in srgb,var(--surface) 30%,transparent)}
+.mp-land{fill:color-mix(in srgb,var(--ink) 9%,transparent)}
+.mp-b{stroke:var(--glass-strong)}
+.cfm{border-radius:var(--r-md)}
+
+/* tooltip kaca gelap */
+#tip{background:color-mix(in srgb,var(--ink) 80%,transparent);color:var(--bg);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+  border:1px solid rgba(255,255,255,.14);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+
+/* gerak halus */
+.btn,nav.sec button,.seg button,.views button,select,input[type=search],th.sort,tbody tr td{
+  transition:background-color .25s var(--ease),color .2s ease,border-color .25s ease,box-shadow .25s var(--ease),transform .15s var(--ease)}
+select:focus,input[type=search]:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+@media (prefers-reduced-motion:no-preference){
+  html{scroll-behavior:smooth}
+  [id^="view-"]:not([hidden]){animation:viewIn .45s var(--ease)}
+  .hr .t b{transform-origin:left center;animation:growX .7s var(--ease) both}
+  .plot .c b{transform-origin:bottom center;animation:growY .7s var(--ease) both}
+  .stack b{transform-origin:left center;animation:growX .7s var(--ease) both}
+  .hr .t b,.plot .c b{transition:width .45s var(--ease),height .45s var(--ease)}
+  @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes growX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+}
+
+/* cadangan jika browser tanpa backdrop-filter */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root{--glass:rgba(255,255,255,.92);--glass-strong:#fff}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--glass:rgba(30,34,39,.95);--glass-strong:#2a2f35}}
+  :root[data-theme="dark"]{--glass:rgba(30,34,39,.95);--glass-strong:#2a2f35}
+}
+@media (max-width:700px){
+  .filters{margin-top:8px;border-radius:var(--r-md)}
+  .card{padding:14px}
+  .views{border-radius:18px}
+}
+
+/* ===== Dropdown kaca ===== */
+.dd{position:relative;min-width:128px;max-width:100%}
+.dd select{position:absolute;inset:0;width:100%;height:100%;min-width:0;opacity:0;pointer-events:none}
+.dd-btn{display:flex;align-items:center;gap:8px;width:100%;font:400 14px var(--f-body);color:var(--ink);text-align:left;cursor:pointer;
+  background:var(--glass-strong);border:1px solid var(--glass-line);border-radius:10px;padding:7px 10px;box-shadow:var(--glass-hi);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  transition:background-color .25s var(--ease),border-color .25s ease,box-shadow .25s var(--ease)}
+.dd-btn:hover{background:color-mix(in srgb,var(--glass-strong) 80%,var(--ink) 6%)}
+.dd-btn:disabled{opacity:.5;cursor:default}
+.dd-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-btn::after{content:"";flex:none;width:6px;height:6px;border-right:1.6px solid var(--ink-3);border-bottom:1.6px solid var(--ink-3);
+  transform:translateY(-2px) rotate(45deg);transition:transform .25s var(--ease)}
+.dd-btn[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.dd-btn[aria-expanded="true"]::after{transform:translateY(2px) rotate(-135deg)}
+.dd-list{position:fixed;z-index:60;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:6px;
+  max-width:min(360px,calc(100vw - 16px));background:var(--glass-strong);border:1px solid var(--glass-line);border-radius:14px;
+  box-shadow:var(--glass-hi),0 18px 44px -10px rgba(10,25,50,.38),0 2px 8px rgba(10,25,50,.12);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%)}
+.dd-list[hidden]{display:none}
+.dd-opt{position:relative;padding:7px 10px 7px 28px;border-radius:9px;font:400 14px var(--f-body);color:var(--ink);cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background-color .12s ease}
+.dd-opt.act{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.dd-opt[aria-selected="true"]{font-weight:600;color:var(--accent)}
+.dd-opt[aria-selected="true"]::before{content:"";position:absolute;left:11px;top:50%;width:5px;height:9px;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-62%) rotate(45deg)}
+@media (prefers-reduced-motion:no-preference){
+  .dd-list.in{animation:ddIn .2s var(--ease)}
+  @keyframes ddIn{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+}
+@media (max-width:560px){.dd{min-width:0;width:100%}}
 </style>
 
 <div class="wrap">
@@ -377,7 +536,7 @@ const convLabel=c=>c==='91'?'91 · Curah':c;
 
 const st={date:'',shift:'',unit:'',exp:'',paket:'',semen:'',prov:'',conv:''};
 const isProyek=r=>/PRY\s*\/\s*CPM|PRY\s+SEKOLAH/i.test(r.ship||'');
-const semenOf=r=>isProyek(r)?'Proyek':'Non Proyek';
+const semenOf=r=>isProyek(r)?'Proyek':'Reguler';
 const PAKET={'Paket 1':['Batang','Pekalongan','Pemalang','Pemalang Selatan','Tegal','Brebes','Demak','Grobogan','Semarang','Ungaran','Ambarawa','Salatiga','Boja','Kendal','Weleri'],
 'Paket 2':['Sragen','Surakarta','Karanganyar','Sukoharjo','Boyolali','Klaten','Wonogiri','Purwantoro','Rembang','Blora','Cepu','Pati','Kudus','Jepara','Purwodadi'],
 'Paket 4':['Madiun','Magetan','Ngawi','Ponorogo','Pacitan','Walikukun']};
@@ -393,7 +552,7 @@ function buildFilters(){
   fillSel('#f-shift','Semua shift',uniq(r=>r.shift),v=>'Shift '+v,st.shift);
   fillSel('#f-unit','Semua kemasan',uniq(r=>r.unit),null,st.unit);
   fillSel('#f-exp','Semua ekspeditur',uniq(r=>r.exp),null,st.exp);
-  fillSel('#f-semen','Semua semen',['Proyek','Non Proyek'],null,st.semen);
+  fillSel('#f-semen','Semua semen',['Proyek','Reguler'],null,st.semen);
   fillSel('#f-paket','Semua paket',paketVals(D),null,st.paket);
   fillSel('#f-prov','Semua provinsi',uniq(r=>r.prov),null,st.prov);
   fillSel('#f-conv','Semua conveyor',uniq(r=>r.conv),convLabel,st.conv);
@@ -470,9 +629,9 @@ function render(){
       kpi('Timbangan ≠ tonase &gt; 0,5 t',nf(over.length),'SPJ',nf(over.length/F.length*100,1)+'% dari SPJ');
     $('#kpis2').innerHTML=
       kpi('Median tunggu',dur(q(waits,.5)),'','antri → masuk')+
-      kpi('Tunggu P90',dur(q(waits,.9)),'','10% truk menunggu lebih lama')+
+      kpi('Tunggu',dur(q(waits,.9)),'','10% truk menunggu lebih lama')+
       kpi('Median proses',dur(q(dw,.5)),'','masuk → keluar')+
-      kpi('Proses P90',dur(q(dw,.9)),'','10% truk lebih lama dari ini')+
+      kpi('Proses',dur(q(dw,.9)),'','10% truk lebih lama dari ini')+
       kpi('Tunggu &gt; 2 jam',nf(longw.length),'truk',nf(longw.length/tr(F)*100,1)+'% dari SPJ');
   }
   /* insights */
@@ -517,7 +676,7 @@ function render(){
   const wh=Array.from({length:24},(_,h)=>{const a=F.filter(r=>hr(r.i)===h);return {label:String(h).padStart(2,'0'),tip:'<b>Masuk jam '+String(h).padStart(2,'0')+'</b><br>'+tr(a)+' truk<br>'+(tr(a)?'median tunggu '+dur(q(a.filter(r=>r.f).map(r=>r.wait),.5)):'tidak ada truk'),segs:[{v:tr(a)?q(a.filter(r=>r.f).map(r=>r.wait),.5):0,c:C1}]}});
   cols($('#c-wh'),wh,{every:3,axis:'jam masuk plant (WIB) · menit'});
   const cv=[...group(F,r=>r.conv)].sort();const mxd=Math.max(1,...cv.map(([,a])=>q(a.filter(r=>r.f).map(r=>r.dwell),.5)));
-  table($('#t-conv'),[{t:'Conveyor'},{t:'Truk',r:1},{t:'Ton',r:1},{t:'Median tunggu',r:1},{t:'Median proses'},{t:'P90 proses',r:1}],
+  table($('#t-conv'),[{t:'Conveyor'},{t:'Truk',r:1},{t:'Ton',r:1},{t:'Median tunggu',r:1},{t:'Median proses'},{t:'Proses',r:1}],
     cv.map(([k,a])=>{const m=q(a.filter(r=>r.f).map(r=>r.dwell),.5);return [convLabel(k),nf(tr(a)),nf(sum(a,r=>r.net),1),dur(q(a.filter(r=>r.f).map(r=>r.wait),.5)),dur(m)+'<span class="mini" style="width:'+(m/mxd*60)+'px"></span>',dur(q(a.filter(r=>r.f).map(r=>r.dwell),.9))]}));
   /* customers */
   hbars($('#h-dist'),[...group(F,r=>r.dist)].map(([k,a])=>({label:k,v:sum(a,r=>r.net),tip:'<b>'+esc(k)+'</b><br>'+tr(a)+' truk · '+nf(sum(a,r=>r.net),1)+' ton'})).sort((a,b)=>b.v-a.v).slice(0,10),{fmt:v=>nf(v,1)+' t'});
@@ -543,7 +702,7 @@ function render(){
 }
 
 /* raw table */
-const COLS=[['id','SPJ',0,1],['pl','Plat',0,1],['tt','Tipe',0,0],['prod','Produk',0,0],['qty','Qty',1,0],['net','Tonase t',1,0],['wt','Timbang t',1,0],['dist','Distributor',0,0],['exp','Ekspeditur',0,0],['kab','Kota/Kab',0,0],['conv','Conv',0,0],['shift','Shift',0,0],['q','Antri',0,1],['i','Masuk',0,1],['o','Keluar',0,1],['wait','Tunggu',1,0],['dwell','Proses',1,0]];
+const COLS=[['id','SPJ',0,1],['pl','Plat',0,1],['dr','Driver',0,0],['tt','Tipe',0,0],['prod','Produk',0,0],['qty','Qty',1,0],['net','Tonase t',1,0],['wt','Timbang t',1,0],['dist','Distributor',0,0],['exp','Ekspeditur',0,0],['kab','Kota/Kab',0,0],['conv','Conv',0,0],['shift','Shift',0,0],['q','Antri',0,1],['i','Masuk',0,1],['o','Keluar',0,1],['wait','Tunggu',1,0],['dwell','Proses',1,0]];
 const fm={qty:v=>nf(v),wt:v=>nf(v,2),net:v=>nf(v,1),q:v=>dm(v)+' '+hm(v),i:v=>dm(v)+' '+hm(v),o:v=>dm(v)+' '+hm(v),wait:dur,dwell:dur};
 function renderTable(){
   const s=$('#q').value.trim().toLowerCase();
@@ -818,7 +977,7 @@ function renderConv(){
   const inproc=c=>{const a=SROWS.filter(r=>r.conv===c&&(!st.unit||r.unit===st.unit));return {out:a.filter(r=>!r.i).length,inn:a.filter(r=>r.i).length,t:sum(a,r=>r.ton)}};
   const rowsC=convs.map(c=>{const a=src.filter(r=>r.conv===c),f=a.filter(r=>r.f);return {c,a,n:tr(a),zak:sum(a.filter(r=>r.unit==='Zak'),r=>r.qty),t:sum(a,r=>r.net),w:q(f.map(r=>r.wait),.5),d:q(f.map(r=>r.dwell),.5),d9:q(f.map(r=>r.dwell),.9),dmax:Math.max(0,...f.map(r=>r.dwell)),ip:inproc(c),kind:kindOf(c)}});
   const heads=proc?[{t:'Conveyor'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median lama',r:1},{t:'Terlama',r:1}]
-    :[{t:'Conveyor'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median tunggu',r:1},{t:'Median proses',r:1},{t:'P90 proses',r:1}].concat(showIp?[{t:'Dalam proses',r:1}]:[]);
+    :[{t:'Conveyor'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median tunggu',r:1},{t:'Median proses',r:1},{t:'Proses',r:1}].concat(showIp?[{t:'Dalam proses',r:1}]:[]);
   table($('#cv-sum'),heads,rowsC.map(x=>{const b=[esc(convLabel(x.c)),nf(x.n),x.zak?nf(x.zak):'–',nf(x.t,1),nf(x.t/T*100,1)+'%'];
     return proc?b.concat([dur(x.d),x.n?dur(x.dmax):'–']):b.concat([dur(x.w),dur(x.d),dur(x.d9)],showIp?[(x.ip.out+x.ip.inn)?nf(x.ip.out)+' antri · '+nf(x.ip.inn)+' di plant':'–']:[])}));
   $('#cv-grid').innerHTML=rowsC.map(x=>'<div class="card cvc"><div class="cvh"><h3>Conveyor '+esc(convLabel(x.c))+'</h3><span class="pill b-info">'+x.kind+'</span>'+(x.n?'':'<span class="pill b-warn">Belum ada truk</span>')+'</div>'+
@@ -877,7 +1036,7 @@ function renderStatus(){
   const stv=[...new Set(A.map(r=>r.st))].sort();
   fillSel('#ss-st','Semua status',stv,v=>'Status '+v,sf.st);
   fillSel('#ss-unit','Semua kemasan',[...new Set(A.map(r=>r.unit))].sort(),null,sf.unit);
-  fillSel('#ss-semen','Semua semen',['Proyek','Non Proyek'],null,sf.semen);
+  fillSel('#ss-semen','Semua semen',['Proyek','Reguler'],null,sf.semen);
   fillSel('#ss-paket','Semua paket',paketVals(A),null,sf.paket);
   fillSel('#ss-conv','Semua conveyor',[...new Set(A.map(r=>r.conv))].sort(),convLabel,sf.conv);
   sf.st=$('#ss-st').value;sf.unit=$('#ss-unit').value;sf.conv=$('#ss-conv').value;sf.paket=$('#ss-paket').value;sf.semen=$('#ss-semen').value;
@@ -902,8 +1061,8 @@ function renderStatus(){
   hbars($('#ss-prod'),bar(r=>r.prod,'t'),{fmt:v=>nf(v,1)+' t'});
   hbars($('#ss-dist'),bar(r=>r.dist,'t'),{fmt:v=>nf(v,1)+' t'});
   hbars($('#ss-exp'),bar(r=>r.exp,'n'),{fmt:v=>nf(v)+' SPJ'});
-  table($('#ss-rows'),[{t:'Status'},{t:'Posisi'},{t:'Plat'},{t:'Tipe'},{t:'Produk'},{t:'Ton',r:1},{t:'Tujuan'},{t:'Distributor'},{t:'Ekspeditur'},{t:'Conv'},{t:'Antri',m:1},{t:'Masuk',m:1},{t:'Lama',r:1}],
-    [...R].sort((a,b)=>a.st<b.st?-1:a.st>b.st?1:b.lama-a.lama).map(r=>['<i class="dot" style="background:'+col[r.st]+'"></i>'+esc(r.st),r.i?'Di plant':'Antri','<span class="mono">'+esc(r.pl)+'</span>',esc(r.tt),esc(r.prod),nf(r.ton,1),esc(r.kab)+(RB.includes(r.kab)&&r.unit==='Zak'?' <span class="pill b-info">Remblo</span>':''),esc(r.dist),esc(r.exp),r.conv,dm(r.q)+' '+hm(r.q),r.i?dm(r.i)+' '+hm(r.i):'–','<span class="pill '+(r.lama>=240?'b-warn':'b-info')+'">'+dur(r.lama)+'</span>']));
+  table($('#ss-rows'),[{t:'Status'},{t:'Posisi'},{t:'Plat'},{t:'Driver'},{t:'Tipe'},{t:'Produk'},{t:'Ton',r:1},{t:'Tujuan'},{t:'Distributor'},{t:'Ekspeditur'},{t:'Conv'},{t:'Antri',m:1},{t:'Masuk',m:1},{t:'Lama',r:1}],
+    [...R].sort((a,b)=>a.st<b.st?-1:a.st>b.st?1:b.lama-a.lama).map(r=>['<i class="dot" style="background:'+col[r.st]+'"></i>'+esc(r.st),r.i?'Di plant':'Antri','<span class="mono">'+esc(r.pl)+'</span>',esc(r.dr||'–'),esc(r.tt),esc(r.prod),nf(r.ton,1),esc(r.kab)+(RB.includes(r.kab)&&r.unit==='Zak'?' <span class="pill b-info">Remblo</span>':''),esc(r.dist),esc(r.exp),r.conv,dm(r.q)+' '+hm(r.q),r.i?dm(r.i)+' '+hm(r.i):'–','<span class="pill '+(r.lama>=240?'b-warn':'b-info')+'">'+dur(r.lama)+'</span>']));
 }
 ['ss-st','ss-unit','ss-conv','ss-paket','ss-semen'].forEach(id=>$('#'+id).addEventListener('change',()=>{sf.st=$('#ss-st').value;sf.unit=$('#ss-unit').value;sf.conv=$('#ss-conv').value;sf.paket=$('#ss-paket').value;sf.semen=$('#ss-semen').value;renderStatus()}));
 /* ===== hapus data per tanggal ===== */
@@ -946,3 +1105,106 @@ render();
 </script>
 
 </body></html>
+
+<script>
+/* Dropdown kaca: menggantikan tampilan <select>, nilai & event tetap lewat <select> asli */
+(function(){
+  var valDesc=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value');
+  var list=document.createElement('div');list.className='dd-list';list.setAttribute('role','listbox');list.hidden=true;
+  document.body.appendChild(list);
+  var cur=null,uid=0;
+
+  function setAct(i){
+    if(!cur)return;
+    var n=list.children;if(!n.length)return;
+    i=Math.max(0,Math.min(n.length-1,i));
+    var p=list.querySelector('.act');if(p)p.classList.remove('act');
+    cur.act=i;n[i].classList.add('act');
+    cur.btn.setAttribute('aria-activedescendant',n[i].id);
+    n[i].scrollIntoView({block:'nearest'});
+  }
+  function place(){
+    if(!cur)return;
+    var r=cur.btn.getBoundingClientRect(),vh=innerHeight,vw=innerWidth;
+    list.style.minWidth=r.width+'px';list.style.maxHeight='300px';
+    var below=vh-r.bottom-14,above=r.top-14,h=list.scrollHeight+2;
+    var up=h>below&&above>below;
+    list.style.maxHeight=Math.max(120,Math.min(300,up?above:below))+'px';
+    var hh=list.offsetHeight,w=list.offsetWidth;
+    list.style.top=(up?r.top-6-hh:r.bottom+6)+'px';
+    list.style.left=Math.max(8,Math.min(r.left,vw-w-8))+'px';
+    list.style.transformOrigin=(up?'bottom':'top')+' left';
+  }
+  function close(){
+    if(!cur)return;
+    cur.btn.setAttribute('aria-expanded','false');cur.btn.removeAttribute('aria-activedescendant');
+    cur=null;list.hidden=true;list.classList.remove('in');
+  }
+  function open(o){
+    close();cur=o;list.innerHTML='';
+    Array.prototype.forEach.call(o.sel.options,function(op,i){
+      var d=document.createElement('div');d.className='dd-opt';d.setAttribute('role','option');
+      d.id=o.id+'-o'+i;d.dataset.i=i;d.textContent=op.textContent;
+      if(op.selected)d.setAttribute('aria-selected','true');
+      list.appendChild(d);
+    });
+    list.hidden=false;o.btn.setAttribute('aria-expanded','true');
+    place();setAct(o.sel.selectedIndex<0?0:o.sel.selectedIndex);
+    list.classList.remove('in');void list.offsetWidth;list.classList.add('in');
+  }
+  function choose(i){
+    var o=cur;if(!o)return;
+    var changed=o.sel.selectedIndex!==i;
+    o.sel.selectedIndex=i;o.update();close();o.btn.focus();
+    if(changed){o.sel.dispatchEvent(new Event('input',{bubbles:true}));o.sel.dispatchEvent(new Event('change',{bubbles:true}))}
+  }
+
+  list.addEventListener('pointerdown',function(e){e.preventDefault()});
+  list.addEventListener('click',function(e){var d=e.target.closest('.dd-opt');if(d)choose(+d.dataset.i)});
+  list.addEventListener('pointermove',function(e){var d=e.target.closest('.dd-opt');if(d&&+d.dataset.i!==cur.act)setAct(+d.dataset.i)});
+  document.addEventListener('pointerdown',function(e){if(cur&&!list.contains(e.target)&&!cur.w.contains(e.target))close()});
+  addEventListener('resize',place);
+  addEventListener('scroll',function(e){if(cur&&!list.contains(e.target))place()},true);
+
+  function enhance(sel){
+    var w=document.createElement('div');w.className='dd';
+    if(sel.id==='f-exp')w.style.maxWidth='230px';
+    sel.parentNode.insertBefore(w,sel);w.appendChild(sel);
+    var btn=document.createElement('button');btn.type='button';btn.className='dd-btn';
+    btn.setAttribute('role','combobox');btn.setAttribute('aria-haspopup','listbox');btn.setAttribute('aria-expanded','false');
+    var t=document.createElement('span');t.className='dd-t';btn.appendChild(t);w.appendChild(btn);
+    var lab=sel.id&&document.querySelector('label[for="'+sel.id+'"]');
+    if(lab){if(!lab.id)lab.id='lb-'+sel.id;btn.setAttribute('aria-labelledby',lab.id)}
+    sel.tabIndex=-1;sel.setAttribute('aria-hidden','true');
+    var o={sel:sel,btn:btn,w:w,id:'dd'+(uid++),act:0,update:function(){
+      var op=sel.options[sel.selectedIndex];t.textContent=op?op.textContent:'';btn.disabled=sel.disabled;
+    }};
+    Object.defineProperty(sel,'value',{configurable:true,get:function(){return valDesc.get.call(this)},
+      set:function(v){valDesc.set.call(this,v);o.update()}});
+    new MutationObserver(o.update).observe(sel,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled']});
+    sel.addEventListener('change',o.update);
+    sel.addEventListener('focus',function(){btn.focus()});
+    btn.addEventListener('click',function(){cur&&cur.btn===btn?close():open(o)});
+    btn.addEventListener('keydown',function(e){
+      var k=e.key;
+      if(!cur||cur.btn!==btn){
+        if(k==='ArrowDown'||k==='ArrowUp'||k==='Enter'||k===' '){e.preventDefault();open(o)}
+        return;
+      }
+      if(k==='ArrowDown'){e.preventDefault();setAct(o.act+1)}
+      else if(k==='ArrowUp'){e.preventDefault();setAct(o.act-1)}
+      else if(k==='Home'){e.preventDefault();setAct(0)}
+      else if(k==='End'){e.preventDefault();setAct(list.children.length-1)}
+      else if(k==='Enter'||k===' '){e.preventDefault();choose(o.act)}
+      else if(k==='Escape'){e.preventDefault();close()}
+      else if(k==='Tab'){close()}
+      else if(k.length===1){
+        var ch=k.toLowerCase(),n=list.children,L=n.length;
+        for(var s=1;s<=L;s++){var j=(o.act+s)%L;if(n[j].textContent.trim().toLowerCase().indexOf(ch)===0){setAct(j);break}}
+      }
+    });
+    o.update();
+  }
+  document.querySelectorAll('select').forEach(enhance);
+})();
+</script>
