@@ -364,7 +364,6 @@ select:focus,input[type=search]:focus{border-color:var(--accent);box-shadow:0 0 
   <div class="fld"><label for="f-exp">Ekspeditur</label><select id="f-exp"></select></div>
   <div class="fld"><label for="f-semen">Semen</label><select id="f-semen"></select></div>
   <div class="fld" id="fld-paket"><label for="f-paket">Paket</label><select id="f-paket"></select></div>
-  <div class="fld" id="fld-cvstatus" hidden><label for="f-cvstatus">Status</label><select id="f-cvstatus"></select></div>
   <div class="fld"><label for="f-prov">Provinsi</label><select id="f-prov"></select></div>
   <div class="fld"><label for="f-conv">Conveyor</label><select id="f-conv"></select></div>
   <div class="count"><span id="cnt"></span><button class="btn" id="reset" type="button">Atur ulang</button></div>
@@ -385,7 +384,7 @@ select:focus,input[type=search]:focus{border-color:var(--accent);box-shadow:0 0 
     <div class="card"><h3>Tonase per jam keluar</h3><p class="sub">Ton, dipisah kemasan zak dan curah.</p>
       <div class="legend"><span><i style="background:var(--s1)"></i>Zak</span><span><i style="background:var(--s2)"></i>Curah</span></div>
       <div id="c-hour"></div></div>
-    <div class="card"><h3>Per shift</h3><p class="sub">Shift mengikuti kolom SHIFT pada data. Shift 3 mencakup malam hingga dini hari.</p><div class="tw" id="t-shift"></div>
+    <div class="card"><h3>Per shift</h3><p class="sub">Shift mengikuti kolom SHIFT pada data. Shift 3 dirinci menjadi malam hari (tanggal sebelumnya, keluar plant pukul 23.00–00.00) dan dini hari (00.00 dan sesudahnya).</p><div class="tw" id="t-shift"></div>
       <h3 style="margin-top:18px">Kemasan</h3><p class="sub">Porsi tonase.</p><div id="unitsplit"></div></div>
   </div>
   <div class="card" id="c-day-card" style="margin-top:12px" hidden><h3>Tonase per tanggal SPJ</h3><p class="sub">Ton per tanggal, dipisah zak dan curah.</p><div class="legend"><span><i style="background:var(--s1)"></i>Zak</span><span><i style="background:var(--s2)"></i>Curah</span></div><div id="c-day"></div></div>
@@ -481,9 +480,9 @@ select:focus,input[type=search]:focus{border-color:var(--accent);box-shadow:0 0 
 <div id="view-conv" hidden>
 <section id="s-conv">
   <h2>Display Conveyor</h2>
-  <p class="lede">Realisasi tiap conveyor beserta rilis per produk. Mengikuti filter di atas, jadi tanggal, shift, atau paket bisa dipilih lebih dulu.</p>
+  <p class="lede">Posisi tiap conveyor dari tab Status (45-60): truk yang sudah masuk plant dan truk yang sudah booking tetapi belum masuk.</p>
   <p class="note" id="cv-note" style="margin:0 0 10px"></p>
-  <div class="card"><h3>Ringkasan per conveyor</h3><p class="sub">Truk, zak, tonase, dan waktu layanan. Kolom Dalam proses diambil dari tab Status (45-60).</p><div class="tw" id="cv-sum"></div></div>
+  <div class="card"><h3>Ringkasan per conveyor</h3><p class="sub">Jumlah truk sudah masuk dan booking per conveyor, beserta lama berada di plant.</p><div class="tw" id="cv-sum"></div></div>
   <div class="cvgrid" id="cv-grid" style="margin-top:12px"></div>
 </section>
 </div>
@@ -547,10 +546,14 @@ const paketVals=a=>['Paket 1','Paket 2','Paket 4','Tanpa paket'].filter(p=>p!=='
 const HARI=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 const fmtD=iso=>{const d=new Date(iso+'T00:00:00Z');return HARI[d.getUTCDay()]+', '+d.getUTCDate()+' '+BLN[d.getUTCMonth()]+' '+d.getUTCFullYear()};
 function fillSel(id,label,vals,fmt,cur){const el=$(id);el.innerHTML='<option value="">'+label+'</option>'+vals.map(v=>'<option value="'+esc(v)+'">'+esc(fmt?fmt(v):v)+'</option>').join('');el.value=vals.includes(cur)?cur:''}
+/* Shift 3 dipecah: malam hari (tanggal sebelumnya, keluar 23:00–00:00) dan dini hari (keluar 00:00 dan sesudahnya) */
+const shiftMatch=(r,v)=>!v||r.shift===v||((v==='3M'||v==='3D')&&r.shift==='3'&&(hr(r.o)>=23?'3M':'3D')===v);
+const shiftLbl=v=>v==='3M'?'Shift 3 malam hari':v==='3D'?'Shift 3 dini hari':'Shift '+v;
+const shiftVals=a=>['1','2','3','3M','3D'].filter(v=>a.some(r=>shiftMatch(r,v)));
 const uniq=f=>[...new Set(D.map(f))].sort();
 function buildFilters(){
   fillSel('#f-date','Semua tanggal',uniq(r=>r.date),fmtD,st.date);
-  fillSel('#f-shift','Semua shift',uniq(r=>r.shift),v=>'Shift '+v,st.shift);
+  fillSel('#f-shift','Semua shift',shiftVals(D),shiftLbl,st.shift);
   fillSel('#f-unit','Semua kemasan',uniq(r=>r.unit),null,st.unit);
   fillSel('#f-exp','Semua ekspeditur',uniq(r=>r.exp),null,st.exp);
   fillSel('#f-semen','Semua semen',['Proyek','Reguler'],null,st.semen);
@@ -612,7 +615,7 @@ function hist(el,vals,w,n,unit){
 /* render */
 let F=[],page=0,sortK='o',sortD=-1;
 function render(){
-  F=D.filter(r=>(!st.date||r.date===st.date)&&(!st.shift||r.shift===st.shift)&&(!st.unit||r.unit===st.unit)&&(!st.exp||r.exp===st.exp)&&(!st.semen||semenOf(r)===st.semen)&&(!st.paket||pk(r.kab)===st.paket)&&(!st.prov||r.prov===st.prov)&&(!st.conv||r.conv===st.conv));
+  F=D.filter(r=>(!st.date||r.date===st.date)&&shiftMatch(r,st.shift)&&(!st.unit||r.unit===st.unit)&&(!st.exp||r.exp===st.exp)&&(!st.semen||semenOf(r)===st.semen)&&(!st.paket||pk(r.kab)===st.paket)&&(!st.prov||r.prov===st.prov)&&(!st.conv||r.conv===st.conv));
   $('#cnt').textContent=nf(F.length)+' dari '+nf(D.length)+' SPJ';
   if(!F.length){['kpis','kpis2','insights'].forEach(i=>$('#'+i).innerHTML='<div class="empty">'+(D.length?'Tidak ada SPJ untuk kombinasi filter ini.':'Belum ada data. Impor file Excel di panel Tambah data untuk mulai.')+'</div>');}
   const T=sum(F,r=>r.net),FT=F.filter(r=>r.f),waits=FT.map(r=>r.wait),dw=FT.map(r=>r.dwell);
@@ -664,7 +667,7 @@ function render(){
   cols($('#c-hour'),hours,{every:3,axis:'jam keluar (WIB) · ton'});
   /* shift */
   table($('#t-shift'),[{t:'Shift'},{t:'Truk',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median proses',r:1}],
-    ['1','2','3'].map(s=>{const a=F.filter(r=>r.shift===s);return tr(a)?['Shift '+s,nf(tr(a)),nf(sum(a,r=>r.net),1),nf(sum(a,r=>r.net)/T*100,1)+'%',dur(q(a.filter(r=>r.f).map(r=>r.dwell),.5))]:null}).filter(Boolean));
+    ['1','2','3','3M','3D'].map(s=>{const a=F.filter(r=>shiftMatch(r,s));return tr(a)?[(s.length>1?'&nbsp;&nbsp;↳ ':'')+shiftLbl(s),nf(tr(a)),nf(sum(a,r=>r.net),1),nf(sum(a,r=>r.net)/T*100,1)+'%',dur(q(a.filter(r=>r.f).map(r=>r.dwell),.5))]:null}).filter(Boolean));
   const zt=sum(zak,r=>r.net),ct=sum(cur,r=>r.net);
   $('#unitsplit').innerHTML=tr(F)?'<div class="stack"><b style="flex:'+zt+';background:'+C1+'" data-tip="<b>Zak</b><br>'+nf(zt,1)+' ton"></b><b style="flex:'+ct+';background:'+C2+'" data-tip="<b>Curah</b><br>'+nf(ct,1)+' ton"></b></div><div class="legend"><span><i style="background:'+C1+'"></i>Zak '+nf(zt/T*100,1)+'%</span><span><i style="background:'+C2+'"></i>Curah '+nf(ct/T*100,1)+'%</span></div>':'';
   /* product */
@@ -831,7 +834,7 @@ function renderRemblo(){
 }
 let view='main';
 function setView(v){
-  view=v;$('#view-main').hidden=v!=='main';$('#view-remblo').hidden=v!=='remblo';$('#view-status').hidden=v!=='status';$('#view-conv').hidden=v!=='conv';$('#filters').hidden=v==='status';$('#fld-paket').hidden=v==='remblo'||v==='conv';$('#fld-cvstatus').hidden=v!=='conv';if((v==='remblo'||v==='conv')&&st.paket){st.paket='';$('#f-paket').value='';render()}
+  view=v;$('#view-main').hidden=v!=='main';$('#view-remblo').hidden=v!=='remblo';$('#view-status').hidden=v!=='status';$('#view-conv').hidden=v!=='conv';$('#filters').hidden=v==='status'||v==='conv';$('#fld-paket').hidden=v==='remblo'||v==='conv';['f-date','f-shift','f-unit','f-exp','f-prov','f-conv'].forEach(id=>{$('#'+id).closest('.fld').hidden=v==='conv'});$('#cnt').hidden=v==='conv';if((v==='remblo'||v==='conv')&&st.paket){st.paket='';$('#f-paket').value='';render()}
   document.querySelectorAll('.views button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v?'true':'false'));
   $('#nav').hidden=v!=='main';
   if(v==='main')renderMap();
@@ -953,49 +956,28 @@ $('#pick').addEventListener('click',()=>$('#file').click());
 $('#file').addEventListener('change',e=>{handleFile(e.target.files[0]);e.target.value=''});
 function resetFilters(){Object.keys(fmap).forEach(id=>{st[fmap[id]]=''})}
 /* ===== Display Conveyor ===== */
-let cvs='';
-function cvStatusName(s){
-  if(s==='70')return 'Status 70 · sudah keluar';
-  const a=SROWS.filter(r=>r.st===s),inn=a.filter(r=>r.i).length;
-  return 'Status '+s+' · '+(inn===a.length?'di dalam plant':inn===0?'antri, belum masuk':'campuran');
-}
+/* Hanya data tab Status (45-60). Sudah masuk = truk sudah di dalam plant; Booking = truk sudah booking conveyor tetapi masih antri di luar plant. */
 function renderConv(){
-  const stv=[...new Set(SROWS.map(r=>r.st))].sort();
-  fillSel('#f-cvstatus','Semua status',['70',...stv.filter(s=>s!=='70')],cvStatusName,cvs);
-  cvs=$('#f-cvstatus').value;
-  const proc=cvs!==''&&cvs!=='70';
-  let src;
-  if(proc){
-    const snap=ms2(SSNAP);
-    src=SROWS.filter(r=>r.st===cvs&&(!st.unit||r.unit===st.unit)&&(!st.exp||r.exp===st.exp)&&(!st.semen||semenOf(r)===st.semen)&&(!st.conv||r.conv===st.conv))
-      .map(r=>({conv:r.conv,prod:r.prod,unit:r.unit,net:r.ton,qty:r.qty,f:1,wait:0,dwell:Math.max(0,(snap-ms2(r.i||r.q))/6e4)}));
-  }else src=F;
-  $('#cv-note').textContent=proc?'Status '+cvs+' berasal dari tab Status (45-60), posisi per '+fmtD(SSNAP.slice(0,10))+' pukul '+SSNAP.slice(11)+'. Filter tanggal, shift, dan provinsi tidak berlaku, karena data ini belum punya tanggal keluar. Kolom "Median lama" dihitung sejak masuk plant (atau sejak antri bila belum masuk).':'';
-  const showIp=cvs==='';
-  const allR=[...D,...SROWS],convs=st.conv?[st.conv]:[...new Set(allR.map(r=>r.conv))].sort();
-  const kindOf=c=>{const u=new Set(allR.filter(r=>r.conv===c).map(r=>r.unit));return u.has('Curah')&&u.has('Zak')?'Zak + curah':u.has('Curah')?'Curah':'Zak'};
-  const T=sum(src,r=>r.net)||1;
-  const inproc=c=>{const a=SROWS.filter(r=>r.conv===c&&(!st.unit||r.unit===st.unit));return {out:a.filter(r=>!r.i).length,inn:a.filter(r=>r.i).length,t:sum(a,r=>r.ton)}};
-  const rowsC=convs.map(c=>{const a=src.filter(r=>r.conv===c),f=a.filter(r=>r.f);return {c,a,n:tr(a),zak:sum(a.filter(r=>r.unit==='Zak'),r=>r.qty),t:sum(a,r=>r.net),w:q(f.map(r=>r.wait),.5),d:q(f.map(r=>r.dwell),.5),d9:q(f.map(r=>r.dwell),.9),dmax:Math.max(0,...f.map(r=>r.dwell)),ip:inproc(c),kind:kindOf(c)}});
-  const heads=proc?[{t:'Conveyor'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median lama',r:1},{t:'Terlama',r:1}]
-    :[{t:'Conveyor'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median tunggu',r:1},{t:'Median proses',r:1},{t:'Proses',r:1}].concat(showIp?[{t:'Dalam proses',r:1}]:[]);
-  table($('#cv-sum'),heads,rowsC.map(x=>{const b=[esc(convLabel(x.c)),nf(x.n),x.zak?nf(x.zak):'–',nf(x.t,1),nf(x.t/T*100,1)+'%'];
-    return proc?b.concat([dur(x.d),x.n?dur(x.dmax):'–']):b.concat([dur(x.w),dur(x.d),dur(x.d9)],showIp?[(x.ip.out+x.ip.inn)?nf(x.ip.out)+' antri · '+nf(x.ip.inn)+' di plant':'–']:[])}));
-  $('#cv-grid').innerHTML=rowsC.map(x=>'<div class="card cvc"><div class="cvh"><h3>Conveyor '+esc(convLabel(x.c))+'</h3><span class="pill b-info">'+x.kind+'</span>'+(x.n?'':'<span class="pill b-warn">Belum ada truk</span>')+'</div>'+
-    '<div class="cvk"><div><span class="l">Truk</span><span class="v">'+nf(x.n)+'</span></div><div><span class="l">'+(x.kind==='Curah'?'Ton':'Zak')+'</span><span class="v">'+(x.kind==='Curah'?nf(x.t,1):nf(x.zak))+'</span></div><div><span class="l">Ton</span><span class="v">'+nf(x.t,1)+'</span></div><div><span class="l">'+(proc?'Median lama':'Median proses')+'</span><span class="v">'+dur(x.d)+'</span></div></div>'+
-    '<h4 class="cvt">Rilis per produk</h4><div class="tw" id="cvt-'+esc(x.c)+'"></div>'+
-    ((showIp&&(x.ip.out+x.ip.inn))?'<p class="note">Dalam proses (tab Status 45-60): '+nf(x.ip.out)+' antri, '+nf(x.ip.inn)+' di dalam plant, '+nf(x.ip.t,1)+' ton.</p>':'')+'</div>').join('');
+  const snap=ms2(SSNAP);
+  const src=SROWS.map(r=>({...r,lama:Math.max(0,(snap-ms2(r.i||r.q))/6e4)}));
+  $('#cv-note').textContent=src.length?'Posisi per '+fmtD(SSNAP.slice(0,10))+' pukul '+SSNAP.slice(11)+'. Booking = truk antri yang belum masuk plant. Lama dihitung sejak masuk plant (atau sejak antri bila belum masuk).':'Belum ada data status. Impor file Excel truk belum keluar ke tab Status (45-60).';
+  const uq=a=>new Set(a.map(r=>r.pl)).size;
+  const convs=[...new Set(['01','02','03','04','05','91',...src.map(r=>r.conv)])].sort();
+  const kindOf=(a,c)=>{if(!a.length)return c==='91'?'Curah':'Zak';const u=new Set(a.map(r=>r.unit));return u.has('Curah')&&u.has('Zak')?'Zak + curah':u.has('Curah')?'Curah':'Zak'};
+  const rowsC=convs.map(c=>{const a=src.filter(r=>r.conv===c),inn=a.filter(r=>r.i),out=a.filter(r=>!r.i),l=inn.map(r=>r.lama);return {c,a,inn,out,ni:uq(inn),no:uq(out),d:q(l,.5),dmax:Math.max(0,...l),kind:kindOf(a,c)}});
+  table($('#cv-sum'),[{t:'Conveyor'},{t:'Sudah masuk',r:1},{t:'Booking',r:1},{t:'Median lama di plant',r:1},{t:'Terlama di plant',r:1}],
+    rowsC.map(x=>[esc(convLabel(x.c)),nf(x.ni),nf(x.no),x.ni?dur(x.d):'–',x.ni?dur(x.dmax):'–']));
+  $('#cv-grid').innerHTML=rowsC.map(x=>'<div class="card cvc"><div class="cvh"><h3>Conveyor '+esc(convLabel(x.c))+'</h3><span class="pill b-info">'+x.kind+'</span>'+(x.a.length?'':'<span class="pill b-warn">Belum ada truk</span>')+'</div>'+
+    '<div class="cvk"><div><span class="l">Sudah masuk</span><span class="v">'+nf(x.ni)+'</span></div><div><span class="l">Booking</span><span class="v">'+nf(x.no)+'</span></div><div><span class="l">Median lama</span><span class="v">'+(x.ni?dur(x.d):'–')+'</span></div></div>'+
+    '<h4 class="cvt">Per produk</h4><div class="tw" id="cvt-'+esc(x.c)+'"></div></div>').join('');
   rowsC.forEach(x=>{
-    const prods=[...group(x.a,r=>r.prod)].map(([k,a])=>({k,n:tr(a),zak:sum(a.filter(r=>r.unit==='Zak'),r=>r.qty),t:sum(a,r=>r.net)})).sort((a,b)=>b.t-a.t);
-    if(!prods.length){$('#cvt-'+x.c).innerHTML='<div class="empty">Belum ada rilis produk</div>';return}
-    const tot=sum(prods,p=>p.t)||1;
-    const rows=prods.map(p=>[esc(p.k),nf(p.n),p.zak?nf(p.zak):'–',nf(p.t,1),nf(p.t/tot*100,1)+'% <span class="mini" style="width:'+Math.round(p.t/tot*56)+'px"></span>']);
-    rows.push(['<b>Total</b>','<b>'+nf(sum(prods,p=>p.n))+'</b>','<b>'+(x.zak?nf(x.zak):'–')+'</b>','<b>'+nf(tot,1)+'</b>','']);
-    table($('#cvt-'+x.c),[{t:'Produk'},{t:'Truk',r:1},{t:'Zak',r:1},{t:'Ton',r:1},{t:'Porsi'}],rows);
+    const prods=[...group(x.a,r=>r.prod)].map(([k,a])=>({k,ni:uq(a.filter(r=>r.i)),no:uq(a.filter(r=>!r.i))})).sort((a,b)=>(b.ni+b.no)-(a.ni+a.no));
+    if(!prods.length){$('#cvt-'+x.c).innerHTML='<div class="empty">Belum ada truk</div>';return}
+    const rows=prods.map(p=>[esc(p.k),nf(p.ni),nf(p.no)]);
+    rows.push(['<b>Total</b>','<b>'+nf(x.ni)+'</b>','<b>'+nf(x.no)+'</b>']);
+    table($('#cvt-'+x.c),[{t:'Produk'},{t:'Sudah masuk',r:1},{t:'Booking',r:1}],rows);
   });
 }
-$('#f-cvstatus').addEventListener('change',()=>{cvs=$('#f-cvstatus').value;renderConv()});
-
 /* ===== tab Status (45-60) ===== */
 const sf={st:'',unit:'',conv:'',paket:'',semen:''};
 const ms2=iso=>Date.parse(iso+':00Z');
@@ -1029,8 +1011,8 @@ function importStatus(json,file){
   if(!r.rows.length){say('Tidak ada baris status yang valid di file ini.','err');return}
   SROWS=r.rows;SSNAP=r.snap||SSNAP;SSRC=file.name;
   try{localStorage.setItem(ST_KEY,JSON.stringify({rows:SROWS,snap:SSNAP,src:SSRC}));localStorage.removeItem(STR_KEY)}catch(e){}
-  sf.st=sf.unit=sf.conv=sf.paket=sf.semen='';syncBtns();renderStatus();setView('status');
-  say(nf(r.rows.length)+' baris dari '+file.name+' masuk ke tab Status (45-60). Isi tab sebelumnya diganti. Data realisasi tidak berubah.'+(r.bad?' '+nf(r.bad)+' baris tidak valid dilewati.':''),'ok');
+  sf.st=sf.unit=sf.conv=sf.paket=sf.semen='';syncBtns();renderStatus();renderConv();setView('conv');
+  say(nf(r.rows.length)+' baris dari '+file.name+' masuk ke tab Status (45-60) dan Display Conveyor. Isi sebelumnya diganti. Data realisasi tidak berubah.'+(r.bad?' '+nf(r.bad)+' baris tidak valid dilewati.':''),'ok');
 }
 function renderStatus(){
   const A=SROWS;
