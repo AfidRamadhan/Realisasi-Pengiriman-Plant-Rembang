@@ -83,6 +83,11 @@ h2{font-family:var(--f-display);font-weight:600;font-size:20px;margin:0 0 4px;te
 .plot .c{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;position:relative}
 .plot .c b{display:block;border-radius:4px 4px 0 0;min-height:0}
 .plot .c:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.plot svg.ln{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.plot svg.ln .ar{stroke:none}
+.plot svg.ln .lp{fill:none;stroke:var(--s1);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.plot .c i.pt{position:absolute;left:50%;width:9px;height:9px;margin:0 0 -4.5px -4.5px;border-radius:50%;background:var(--s1);border:2px solid var(--surface);box-sizing:border-box;pointer-events:none;display:none}
+.plot .c:hover i.pt{display:block}
 .xl{display:flex;gap:3px;margin-left:34px;margin-top:4px;font:400 11px var(--f-mono);color:var(--ink-3)}
 .xl span{flex:1;min-width:0;text-align:center;white-space:nowrap;overflow:visible}
 .xl span.h{visibility:hidden}
@@ -387,6 +392,7 @@ select:focus,input[type=search]:focus{border-color:var(--accent);box-shadow:0 0 
     <div class="card"><h3>Per shift</h3><p class="sub">Shift mengikuti kolom SHIFT pada data. Shift 3 dirinci menjadi malam hari (tanggal sebelumnya, keluar plant pukul 23.00–00.00) dan dini hari (00.00 dan sesudahnya).</p><div class="tw" id="t-shift"></div>
       <h3 style="margin-top:18px">Kemasan</h3><p class="sub">Porsi tonase.</p><div id="unitsplit"></div></div>
   </div>
+  <div class="card" style="margin-top:12px"><h3>Kedatangan truk per jam</h3><p class="sub">Jumlah truk yang masuk plant (kolom Masuk) pada tiap jam. Mengikuti filter di atas.</p><div id="c-arr"></div></div>
   <div class="card" id="c-day-card" style="margin-top:12px" hidden><h3>Tonase per tanggal SPJ</h3><p class="sub">Ton per tanggal, dipisah zak dan curah.</p><div class="legend"><span><i style="background:var(--s1)"></i>Zak</span><span><i style="background:var(--s2)"></i>Curah</span></div><div id="c-day"></div></div>
   <div class="grid cols-2" style="margin-top:12px">
     <div class="card"><h3>Tonase per produk</h3><p class="sub">Ton. Arahkan kursor untuk jumlah truk dan zak.</p><div class="hb" id="h-prod"></div></div>
@@ -595,6 +601,24 @@ function cols(el,items,o){
   const xl=items.map((i,k)=>'<span class="'+(k%every?'h':'')+'">'+i.label+'</span>').join('');
   el.innerHTML='<div class="plot">'+g+'<div class="bars">'+bars+'</div></div><div class="xl">'+xl+'</div>'+(o.axis?'<div class="axt">'+o.axis+'</div>':'');
 }
+function line(el,items,o){
+  const mx=Math.max(1,...items.map(i=>i.v));
+  const step=[1,2,5,10,20,25,50,100,200,250,500,1000].find(s=>mx/s<=4)||1000;
+  const top=Math.ceil(mx/step)*step||step,N=items.length;
+  let g='';for(let v=0;v<=top;v+=step){g+='<div class="g" style="bottom:'+(v/top*100)+'%"><span>'+nf(v)+'</span></div>'}
+  const X=items.map((i,k)=>(k+.5)/N*100),Y=items.map(i=>100-i.v/top*100),n=N;
+  /* interpolasi kubik monoton (Fritsch-Carlson): mulus tanpa melewati batas nilai */
+  const dx=[],sl=[];for(let k=0;k<n-1;k++){dx[k]=X[k+1]-X[k];sl[k]=(Y[k+1]-Y[k])/dx[k]}
+  const m=[sl[0]||0];for(let k=1;k<n-1;k++)m[k]=sl[k-1]*sl[k]<=0?0:(sl[k-1]+sl[k])/2;m[n-1]=sl[n-2]||0;
+  for(let k=0;k<n-1;k++){if(sl[k]===0){m[k]=m[k+1]=0}else{const a=m[k]/sl[k],b=m[k+1]/sl[k],h=Math.hypot(a,b);if(h>3){m[k]=3*a/h*sl[k];m[k+1]=3*b/h*sl[k]}}}
+  let d='M'+X[0].toFixed(2)+','+Y[0].toFixed(2);
+  for(let k=0;k<n-1;k++){const w=dx[k]/3;d+=' C'+(X[k]+w).toFixed(2)+','+(Y[k]+m[k]*w).toFixed(2)+' '+(X[k+1]-w).toFixed(2)+','+(Y[k+1]-m[k+1]*w).toFixed(2)+' '+X[k+1].toFixed(2)+','+Y[k+1].toFixed(2)}
+  const area=d+' L'+X[n-1].toFixed(2)+',100 L'+X[0].toFixed(2)+',100 Z';
+  const cs=items.map(i=>'<div class="c" data-tip="'+esc(i.tip)+'"><i class="pt" style="bottom:'+(i.v/top*100)+'%"></i></div>').join('');
+  const every=o.every||1;
+  const xl=items.map((i,k)=>'<span class="'+(k%every?'h':'')+'">'+i.label+'</span>').join('');
+  el.innerHTML='<div class="plot">'+g+'<svg class="ln" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="arg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--s1);stop-opacity:.38"/><stop offset="1" style="stop-color:var(--s1);stop-opacity:.03"/></linearGradient></defs><path class="ar" d="'+area+'" fill="url(#arg)"/><path class="lp" d="'+d+'"/></svg><div class="bars">'+cs+'</div></div><div class="xl">'+xl+'</div>'+(o.axis?'<div class="axt">'+o.axis+'</div>':'');
+}
 function hbars(el,items,o={}){
   if(!items.length){el.innerHTML='<div class="empty">Tidak ada data</div>';return}
   const mx=Math.max(...items.map(i=>i.v))||1;
@@ -665,6 +689,7 @@ function render(){
   const hours=Array.from({length:24},(_,h)=>{const a=F.filter(r=>hr(r.o)===h),z=sum(a.filter(r=>r.unit==='Zak'),r=>r.net),c=sum(a.filter(r=>r.unit==='Curah'),r=>r.net);
     return {label:String(h).padStart(2,'0'),tip:'<b>'+String(h).padStart(2,'0')+':00–'+String(h).padStart(2,'0')+':59</b><br>'+tr(a)+' truk · '+nf(z+c,1)+' ton<br>Zak '+nf(z,1)+' · Curah '+nf(c,1),segs:[{v:z,c:C1},{v:c,c:C2}]}});
   cols($('#c-hour'),hours,{every:3,axis:'jam keluar (WIB) · ton'});
+  line($('#c-arr'),Array.from({length:24},(_,h)=>{const a=F.filter(r=>r.f&&hr(r.i)===h),n=a.length;return {label:String(h).padStart(2,'0'),v:n,tip:'<b>'+String(h).padStart(2,'0')+':00–'+String(h).padStart(2,'0')+':59</b><br>'+nf(n)+' truk masuk'}}),{every:3,axis:'jam masuk (WIB) · truk'});
   /* shift */
   table($('#t-shift'),[{t:'Shift'},{t:'Truk',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median proses',r:1}],
     ['1','2','3','3M','3D'].map(s=>{const a=F.filter(r=>shiftMatch(r,s));return tr(a)?[(s.length>1?'&nbsp;&nbsp;↳ ':'')+shiftLbl(s),nf(tr(a)),nf(sum(a,r=>r.net),1),nf(sum(a,r=>r.net)/T*100,1)+'%',dur(q(a.filter(r=>r.f).map(r=>r.dwell),.5))]:null}).filter(Boolean));
