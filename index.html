@@ -470,6 +470,7 @@ select:focus,input[type=search]:focus{border-color:var(--accent);box-shadow:0 0 
     <div class="card"><h3>Perbandingan wilayah</h3><p class="sub">Truk, tonase, dan waktu layanan per wilayah.</p><div class="tw" id="rb-tbl"></div></div>
     <div class="card"><h3>Tonase per jam keluar</h3><p class="sub">Ton, ditumpuk per wilayah.</p><div class="legend"><span><i style="background:var(--s1)"></i>Rembang</span><span><i style="background:var(--s2)"></i>Blora</span><span><i style="background:var(--s3)"></i>Cepu</span></div><div id="rb-hour"></div></div>
   </div>
+  <div class="card" style="margin-top:12px"><h3>Kedatangan truk per jam</h3><p class="sub">Jumlah truk yang masuk plant (kolom Masuk) pada tiap jam. Mengikuti filter di atas.</p><div id="rb-arr"></div></div>
   <div class="card" id="rb-day-card" style="margin-top:12px" hidden><h3>Tonase per tanggal SPJ</h3><p class="sub">Ton per tanggal, ditumpuk per wilayah.</p><div class="legend"><span><i style="background:var(--s1)"></i>Rembang</span><span><i style="background:var(--s2)"></i>Blora</span><span><i style="background:var(--s3)"></i>Cepu</span></div><div id="rb-day"></div></div>
   <div class="grid cols-2" style="margin-top:12px">
     <div class="card"><h3>Produk</h3><p class="sub">Ton.</p><div class="hb" id="rb-prod"></div></div>
@@ -479,6 +480,7 @@ select:focus,input[type=search]:focus{border-color:var(--accent);box-shadow:0 0 
   </div>
   <div class="card" style="margin-top:12px"><h3>Ekspeditur</h3><p class="sub">Truk, ton, dan median waktu layanan.</p><div class="tw" id="rb-exp"></div></div>
   <h2 style="margin-top:24px">Daftar SPJ Remblo</h2>
+  <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 10px"><div class="fld"><label for="rb-q">Cari</label><input type="search" id="rb-q" placeholder="Plat, SPJ, distributor, tujuan"></div></div>
   <div class="dtab" id="rb-rows" style="margin-top:8px"></div>
 </section>
 </div>
@@ -558,19 +560,21 @@ const shiftLbl=v=>v==='3M'?'Shift 3 malam hari':v==='3D'?'Shift 3 dini hari':'Sh
 const shiftVals=a=>['1','2','3','3M','3D'].filter(v=>a.some(r=>shiftMatch(r,v)));
 const uniq=f=>[...new Set(D.map(f))].sort();
 function buildFilters(){
-  fillSel('#f-date','Semua tanggal',uniq(r=>r.date),fmtD,st.date);
-  fillSel('#f-shift','Semua shift',shiftVals(D),shiftLbl,st.shift);
+  /* Pilihan dropdown lain mengikuti Kemasan: pilih Zak -> hanya data zak, pilih Curah -> hanya data curah */
+  const B=st.unit?D.filter(r=>r.unit===st.unit):D,ub=f=>[...new Set(B.map(f))].sort();
+  fillSel('#f-date','Semua tanggal',ub(r=>r.date),fmtD,st.date);
+  fillSel('#f-shift','Semua shift',shiftVals(B),shiftLbl,st.shift);
   fillSel('#f-unit','Semua kemasan',uniq(r=>r.unit),null,st.unit);
-  fillSel('#f-exp','Semua ekspeditur',uniq(r=>r.exp),null,st.exp);
-  fillSel('#f-semen','Semua semen',['Proyek','Reguler'],null,st.semen);
-  fillSel('#f-paket','Semua paket',paketVals(D),null,st.paket);
-  fillSel('#f-prov','Semua provinsi',uniq(r=>r.prov),null,st.prov);
-  fillSel('#f-conv','Semua conveyor',uniq(r=>r.conv),convLabel,st.conv);
+  fillSel('#f-exp','Semua ekspeditur',ub(r=>r.exp),null,st.exp);
+  fillSel('#f-semen','Semua semen',['Proyek','Reguler'].filter(v=>B.some(r=>semenOf(r)===v)),null,st.semen);
+  fillSel('#f-paket','Semua paket',paketVals(B),null,st.paket);
+  fillSel('#f-prov','Semua provinsi',ub(r=>r.prov),null,st.prov);
+  fillSel('#f-conv','Semua conveyor',ub(r=>r.conv),convLabel,st.conv);
   Object.keys(fmap).forEach(id=>{st[fmap[id]]=$('#'+id).value});
 }
 const fmap={'f-date':'date','f-shift':'shift','f-unit':'unit','f-exp':'exp','f-semen':'semen','f-paket':'paket','f-prov':'prov','f-conv':'conv'};
 buildFilters();
-Object.keys(fmap).forEach(id=>$('#'+id).addEventListener('change',e=>{st[fmap[id]]=e.target.value;page=0;render()}));
+Object.keys(fmap).forEach(id=>$('#'+id).addEventListener('change',e=>{st[fmap[id]]=e.target.value;if(id==='f-unit')buildFilters();page=0;render()}));
 $('#reset').addEventListener('click',()=>{Object.keys(fmap).forEach(id=>{$('#'+id).value='';st[fmap[id]]=''});$('#q').value='';page=0;render()});
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.go).scrollIntoView({behavior:'smooth'})));
 
@@ -617,7 +621,7 @@ function line(el,items,o){
   const cs=items.map(i=>'<div class="c" data-tip="'+esc(i.tip)+'"><i class="pt" style="bottom:'+(i.v/top*100)+'%"></i></div>').join('');
   const every=o.every||1;
   const xl=items.map((i,k)=>'<span class="'+(k%every?'h':'')+'">'+i.label+'</span>').join('');
-  el.innerHTML='<div class="plot">'+g+'<svg class="ln" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="arg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--s1);stop-opacity:.38"/><stop offset="1" style="stop-color:var(--s1);stop-opacity:.03"/></linearGradient></defs><path class="ar" d="'+area+'" fill="url(#arg)"/><path class="lp" d="'+d+'"/></svg><div class="bars">'+cs+'</div></div><div class="xl">'+xl+'</div>'+(o.axis?'<div class="axt">'+o.axis+'</div>':'');
+  el.innerHTML='<div class="plot">'+g+'<svg class="ln" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="arg-'+el.id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--s1);stop-opacity:.38"/><stop offset="1" style="stop-color:var(--s1);stop-opacity:.03"/></linearGradient></defs><path class="ar" d="'+area+'" fill="url(#arg-'+el.id+')"/><path class="lp" d="'+d+'"/></svg><div class="bars">'+cs+'</div></div><div class="xl">'+xl+'</div>'+(o.axis?'<div class="axt">'+o.axis+'</div>':'');
 }
 function hbars(el,items,o={}){
   if(!items.length){el.innerHTML='<div class="empty">Tidak ada data</div>';return}
@@ -731,8 +735,8 @@ function render(){
 }
 
 /* raw table */
-const COLS=[['id','SPJ',0,1],['pl','Plat',0,1],['dr','Driver',0,0],['tt','Tipe',0,0],['prod','Produk',0,0],['qty','Qty',1,0],['net','Tonase t',1,0],['wt','Timbang t',1,0],['dist','Distributor',0,0],['exp','Ekspeditur',0,0],['kab','Kota/Kab',0,0],['conv','Conv',0,0],['shift','Shift',0,0],['q','Antri',0,1],['i','Masuk',0,1],['o','Keluar',0,1],['wait','Tunggu',1,0],['dwell','Proses',1,0]];
-const fm={qty:v=>nf(v),wt:v=>nf(v,2),net:v=>nf(v,1),q:v=>dm(v)+' '+hm(v),i:v=>dm(v)+' '+hm(v),o:v=>dm(v)+' '+hm(v),wait:dur,dwell:dur};
+const COLS=[['date','Tgl SPJ',0,1],['id','SPJ',0,1],['pl','Plat',0,1],['dr','Driver',0,0],['tt','Tipe',0,0],['prod','Produk',0,0],['qty','Qty',1,0],['net','Tonase t',1,0],['wt','Timbang t',1,0],['dist','Distributor',0,0],['exp','Ekspeditur',0,0],['kab','Kota/Kab',0,0],['conv','Conv',0,0],['shift','Shift',0,0],['q','Antri',0,1],['i','Masuk',0,1],['o','Keluar',0,1],['wait','Tunggu',1,0],['dwell','Proses',1,0]];
+const fm={date:v=>v.slice(8)+'/'+v.slice(5,7)+'/'+v.slice(0,4),qty:v=>nf(v),wt:v=>nf(v,2),net:v=>nf(v,1),q:v=>dm(v)+' '+hm(v),i:v=>dm(v)+' '+hm(v),o:v=>dm(v)+' '+hm(v),wait:dur,dwell:dur};
 function renderTable(){
   const s=$('#q').value.trim().toLowerCase();
   let a=F.filter(r=>!s||[r.id,r.pl,r.dist,r.exp,r.ship,r.kab,r.kec,r.prod,r.dr].join(' ').toLowerCase().includes(s));
@@ -833,7 +837,7 @@ function renderRemblo(){
   $('#rb-count').textContent=nf(R.length)+' SPJ dari '+nf(F.length)+' SPJ pada filter aktif';
   if(!R.length){['rb-kpis'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Tidak ada SPJ zak ke Rembang, Blora, atau Cepu pada filter ini.</div>');
     ['rb-tbl','rb-prod','rb-dist','rb-exp','rb-kec','rb-ship','rb-rows'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Tidak ada data</div>');
-    $('#rb-hour').innerHTML='';$('#rb-day-card').hidden=true;return}
+    $('#rb-hour').innerHTML='';$('#rb-arr').innerHTML='';$('#rb-day-card').hidden=true;return}
   const w=RT.map(r=>r.wait),dw=RT.map(r=>r.dwell);
   $('#rb-kpis').innerHTML=kpi('Truk keluar',nf(n),'trip',nf(R.length)+' SPJ/DO')+kpi('Total tonase',nf(Tn,1),'ton','rata-rata '+nf(Tn/n,1)+' ton per truk')+
     kpi('Total zak',nf(sum(R,r=>r.qty)),'zak','kemasan zak saja')+
@@ -843,6 +847,7 @@ function renderRemblo(){
   table($('#rb-tbl'),[{t:'Wilayah'},{t:'Truk',r:1},{t:'Ton',r:1},{t:'Porsi',r:1},{t:'Median tunggu',r:1},{t:'Median proses',r:1}],
     RB.map(k=>{const a=gk.get(k)||[];if(!a.length)return null;const t=sum(a,r=>r.net);return ['<i class="dot" style="background:'+RBC[k]+'"></i>'+k,nf(tr(a)),nf(t,1),nf(t/Tn*100,1)+'%',dur(q(a.filter(r=>r.f).map(r=>r.wait),.5)),dur(q(a.filter(r=>r.f).map(r=>r.dwell),.5))]}).filter(Boolean));
   /* jam */
+  line($('#rb-arr'),Array.from({length:24},(_,h)=>{const n=R.filter(r=>r.f&&hr(r.i)===h).length;return {label:String(h).padStart(2,'0'),v:n,tip:'<b>'+String(h).padStart(2,'0')+':00–'+String(h).padStart(2,'0')+':59</b><br>'+nf(n)+' truk masuk'}}),{every:3,axis:'jam masuk (WIB) · truk'});
   cols($('#rb-hour'),Array.from({length:24},(_,h)=>{const a=R.filter(r=>hr(r.o)===h),sg=RB.map(k=>({k,v:sum(a.filter(r=>r.kab===k),r=>r.net),c:RBC[k]}));
     return {label:String(h).padStart(2,'0'),tip:'<b>'+String(h).padStart(2,'0')+':00–'+String(h).padStart(2,'0')+':59</b><br>'+tr(a)+' truk · '+nf(sum(a,r=>r.net),1)+' ton'+sg.filter(s=>s.v>0).map(s=>'<br>'+s.k+' '+nf(s.v,1)),segs:sg}}),{every:3,axis:'jam keluar (WIB) · ton'});
   const fd=[...new Set(R.map(r=>r.date))].sort();$('#rb-day-card').hidden=fd.length<2;
@@ -854,9 +859,10 @@ function renderRemblo(){
   hbars($('#rb-ship'),bar(r=>r.ship||'-'),{fmt:v=>nf(v,1)+' t'});
   table($('#rb-exp'),[{t:'Ekspeditur'},{t:'Truk',r:1},{t:'Ton',r:1},{t:'Tunggu',r:1},{t:'Proses',r:1}],
     [...group(R,r=>r.exp)].map(([k,a])=>[k,tr(a),sum(a,r=>r.net),q(a.filter(r=>r.f).map(r=>r.wait),.5),q(a.filter(r=>r.f).map(r=>r.dwell),.5)]).sort((a,b)=>b[1]-a[1]).slice(0,10).map(e=>[esc(e[0]),nf(e[1]),nf(e[2],1),dur(e[3]),dur(e[4])]));
-  table($('#rb-rows'),[{t:'Tgl',m:1},{t:'Plat'},{t:'Wilayah'},{t:'Kecamatan'},{t:'Tujuan'},{t:'Produk'},{t:'Ton',r:1},{t:'Ekspeditur'},{t:'Keluar',m:1},{t:'Tunggu',r:1},{t:'Proses',r:1}],
-    [...R].sort((a,b)=>a.o<b.o?1:-1).slice(0,300).map(r=>[dm(r.o),'<span class="mono">'+esc(r.pl)+'</span>','<i class="dot" style="background:'+RBC[r.kab]+'"></i>'+esc(r.kab),esc(r.kec),esc(r.ship),esc(r.prod),nf(r.net,1),esc(r.exp),hm(r.o),dur(r.wait),dur(r.dwell)]));
+  table($('#rb-rows'),[{t:'Tgl',m:1},{t:'SPJ',m:1},{t:'Plat'},{t:'Wilayah'},{t:'Kecamatan'},{t:'Tujuan'},{t:'Produk'},{t:'Ton',r:1},{t:'Ekspeditur'},{t:'Masuk',m:1},{t:'Keluar',m:1},{t:'Tunggu',r:1},{t:'Proses',r:1}],
+    [...R].filter(r=>{const k=($('#rb-q').value||'').trim().toLowerCase();return !k||[r.id,r.pl,r.kab,r.kec,r.ship,r.prod,r.exp,r.dr,r.dist].join(' ').toLowerCase().includes(k)}).sort((a,b)=>a.o<b.o?1:-1).slice(0,300).map(r=>[r.o.slice(8,10)+'/'+r.o.slice(5,7)+'/'+r.o.slice(0,4),esc(r.id),'<span class="mono">'+esc(r.pl)+'</span>','<i class="dot" style="background:'+RBC[r.kab]+'"></i>'+esc(r.kab),esc(r.kec),esc(r.ship),esc(r.prod),nf(r.net,1),esc(r.exp),hm(r.i),hm(r.o),dur(r.wait),dur(r.dwell)]));
 }
+$('#rb-q').addEventListener('input',()=>renderRemblo());
 let view='main';
 function setView(v){
   view=v;$('#view-main').hidden=v!=='main';$('#view-remblo').hidden=v!=='remblo';$('#view-status').hidden=v!=='status';$('#view-conv').hidden=v!=='conv';$('#filters').hidden=v==='status'||v==='conv';$('#fld-paket').hidden=v==='remblo'||v==='conv';['f-date','f-shift','f-unit','f-exp','f-prov','f-conv'].forEach(id=>{$('#'+id).closest('.fld').hidden=v==='conv'});$('#cnt').hidden=v==='conv';if((v==='remblo'||v==='conv')&&st.paket){st.paket='';$('#f-paket').value='';render()}
@@ -1042,11 +1048,12 @@ function importStatus(json,file){
 function renderStatus(){
   const A=SROWS;
   const stv=[...new Set(A.map(r=>r.st))].sort();
-  fillSel('#ss-st','Semua status',stv,v=>'Status '+v,sf.st);
+  fillSel('#ss-st','Semua status',[...new Set((sf.unit?A.filter(r=>r.unit===sf.unit):A).map(r=>r.st))].sort(),v=>'Status '+v,sf.st);
   fillSel('#ss-unit','Semua kemasan',[...new Set(A.map(r=>r.unit))].sort(),null,sf.unit);
-  fillSel('#ss-semen','Semua semen',['Proyek','Reguler'],null,sf.semen);
-  fillSel('#ss-paket','Semua paket',paketVals(A),null,sf.paket);
-  fillSel('#ss-conv','Semua conveyor',[...new Set(A.map(r=>r.conv))].sort(),convLabel,sf.conv);
+  const SB=sf.unit?A.filter(r=>r.unit===sf.unit):A;
+  fillSel('#ss-semen','Semua semen',['Proyek','Reguler'].filter(v=>SB.some(r=>semenOf(r)===v)),null,sf.semen);
+  fillSel('#ss-paket','Semua paket',paketVals(SB),null,sf.paket);
+  fillSel('#ss-conv','Semua conveyor',[...new Set(SB.map(r=>r.conv))].sort(),convLabel,sf.conv);
   sf.st=$('#ss-st').value;sf.unit=$('#ss-unit').value;sf.conv=$('#ss-conv').value;sf.paket=$('#ss-paket').value;sf.semen=$('#ss-semen').value;
   const nameOf=s=>{const a=A.filter(r=>r.st===s);const inn=a.filter(r=>r.i).length;return 'Status '+s+' · '+(inn===a.length?'di dalam plant':inn===0?'antri, belum masuk':'campuran')};
   if(!A.length){['ss-kpis'].forEach(i=>$('#'+i).innerHTML='<div class="empty">Belum ada data status. Impor file Excel yang berisi truk belum keluar (tanpa tanggal keluar) untuk mengisi tab ini.</div>');
